@@ -1,7 +1,8 @@
 <Page
     x:Class="KryakApp.Pages.ServerPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" NavigationCacheMode="Enabled">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    NavigationCacheMode="Enabled">
 
     <ScrollViewer>
         <StackPanel Padding="22" Spacing="18">
@@ -39,7 +40,8 @@
                                         VerticalAlignment="Center"
                                         Spacing="2">
                                 <TextBlock Text="Server state" FontSize="14"/>
-                                <TextBlock Text="Offline"
+                                <TextBlock x:Name="ServerStateText"
+                                           Text="Offline"
                                            FontSize="12"
                                            Foreground="{ThemeResource SystemFillColorCriticalBrush}"/>
                             </StackPanel>
@@ -51,17 +53,17 @@
 
                                 <StackPanel>
                                     <TextBlock Text="Uptime" FontSize="12" Opacity="0.75"/>
-                                    <TextBlock Text="00:00" FontSize="14"/>
+                                    <TextBlock x:Name="UptimeText" Text="00:00" FontSize="14"/>
                                 </StackPanel>
 
                                 <StackPanel>
                                     <TextBlock Text="Users" FontSize="12" Opacity="0.75"/>
-                                    <TextBlock Text="0" FontSize="14"/>
+                                    <TextBlock x:Name="UsersText" Text="0" FontSize="14"/>
                                 </StackPanel>
 
                                 <StackPanel>
                                     <TextBlock Text="Port" FontSize="12" Opacity="0.75"/>
-                                    <TextBlock Text="None" FontSize="14"/>
+                                    <TextBlock x:Name="PortText" Text="None" FontSize="14"/>
                                 </StackPanel>
 
                             </StackPanel>
@@ -97,7 +99,8 @@
                                            Opacity="0.75"/>
                             </StackPanel>
 
-                            <NumberBox Grid.Column="2"
+                            <NumberBox x:Name="PortNumberBox"
+                                       Grid.Column="2"
                                        Width="140"
                                        Value="5555"
                                        SpinButtonPlacementMode="Hidden"
@@ -118,7 +121,7 @@
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
 
-                            <FontIcon Glyph="&#xE8D7;"
+                            <FontIcon Glyph="&#xEB95;"
                                       FontSize="20"
                                       VerticalAlignment="Center"/>
 
@@ -130,16 +133,19 @@
                                            Opacity="0.75"/>
                             </StackPanel>
 
-                            <TextBox Grid.Column="2"
+                            <TextBox x:Name="CertificatePathTextBox"
+                                     Grid.Column="2"
                                      PlaceholderText="Certificate path"
                                      VerticalAlignment="Center"/>
 
-                            <Button Grid.Column="3"
+                            <Button x:Name="BrowseCertificateButton"
+                                    Grid.Column="3"
+                                    Click="BrowseCertificateButton_Click"
                                     MinWidth="42"
                                     MinHeight="42"
                                     Padding="8,0"
                                     VerticalAlignment="Center">
-                                <FontIcon Glyph="&#xE8B7;" FontSize="16"/>
+                                <FontIcon Glyph="&#xE8E5;" FontSize="16"/>
                             </Button>
                         </Grid>
                     </Border>
@@ -168,7 +174,8 @@
                                            Opacity="0.75"/>
                             </StackPanel>
 
-                            <PasswordBox Grid.Column="2"
+                            <PasswordBox x:Name="CertificatePasswordBox"
+                                         Grid.Column="2"
                                          PlaceholderText="Password"
                                          VerticalAlignment="Center"/>
                         </Grid>
@@ -199,15 +206,24 @@
                                            Opacity="0.75"/>
                             </StackPanel>
 
-                            <Button Grid.Column="1">
+                            <Button x:Name="GenerateCertificateButton"
+                                    Grid.Column="1"
+                                    Click="GenerateCertificateButton_Click">
                                 <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <FontIcon Glyph="&#xE7F4;" FontSize="16"/>
+                                    <FontIcon Glyph="&#xEB95;" FontSize="16"/>
                                     <TextBlock Text="Generate certificate"/>
                                 </StackPanel>
                             </Button>
 
-                            <Button Grid.Column="2" Content="Start server"/>
-                            <Button Grid.Column="3" Content="Stop server"/>
+                            <Button x:Name="StartServerButton"
+                                    Grid.Column="2" Style="{StaticResource AccentButtonStyle}"
+                                    Content="Start server"
+                                    Click="StartServerButton_Click"/>
+
+                            <Button x:Name="StopServerButton"
+                                    Grid.Column="3"
+                                    Content="Stop server"
+                                    Click="StopServerButton_Click"/>
                         </Grid>
                     </Border>
                 </StackPanel>

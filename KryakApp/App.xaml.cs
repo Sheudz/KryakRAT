@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Runtime.InteropServices.WindowsRuntime;
+﻿using KryakApp.Services;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
@@ -11,8 +7,12 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Navigation;
 using Microsoft.UI.Xaml.Shapes;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Runtime.InteropServices.WindowsRuntime;
 using Windows.ApplicationModel;
-using Microsoft.UI.Xaml;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
 
@@ -26,7 +26,7 @@ namespace KryakApp
     /// </summary>
     public partial class App : Application
     {
-        private Window? _window;
+        public static Server Server { get; } = new();
         public static Window? MainWindow { get; private set; }
         /// <summary>
         /// Initializes the singleton application object.  This is the first line of authored code
