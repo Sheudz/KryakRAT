@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "KryakApp (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "KryakApp (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
