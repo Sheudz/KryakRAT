@@ -1,11 +1,13 @@
 <Page
     x:Class="KryakApp.SettingsPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" NavigationCacheMode="Enabled">
 
     <ScrollViewer>
         <StackPanel Padding="22" Spacing="18">
-
+            <StackPanel Width="1000"
+                        HorizontalAlignment="Center"
+                        Spacing="18">
             <TextBlock Text="Settings"
                        FontSize="28"
                        FontWeight="SemiBold"
@@ -115,7 +117,7 @@
                               HorizontalAlignment="Center"/>
                 </Grid>
             </Border>
-
+            </StackPanel>
         </StackPanel>
     </ScrollViewer>
 </Page>

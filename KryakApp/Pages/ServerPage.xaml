@@ -1,14 +1,218 @@
-<?xml version="1.0" encoding="utf-8"?>
 <Page
     x:Class="KryakApp.Pages.ServerPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:local="using:KryakApp.Pages"
-    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    mc:Ignorable="d">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" NavigationCacheMode="Enabled">
 
-    <Grid>
+    <ScrollViewer>
+        <StackPanel Padding="22" Spacing="18">
 
-    </Grid>
+            <StackPanel MaxWidth="1000"
+                        HorizontalAlignment="Stretch"
+                        Spacing="18">
+
+                <TextBlock Text="Server"
+                           FontSize="28"
+                           FontWeight="SemiBold"
+                           Margin="0,0,0,6"/>
+
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Server status"
+                               FontWeight="SemiBold"/>
+
+                    <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                            CornerRadius="4"
+                            Padding="16"
+                            MinHeight="86">
+
+                        <Grid ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="42"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <FontIcon Glyph="&#xE9D9;"
+                                      FontSize="20"
+                                      VerticalAlignment="Center"/>
+
+                            <StackPanel Grid.Column="1"
+                                        VerticalAlignment="Center"
+                                        Spacing="2">
+                                <TextBlock Text="Server state" FontSize="14"/>
+                                <TextBlock Text="Offline"
+                                           FontSize="12"
+                                           Foreground="{ThemeResource SystemFillColorCriticalBrush}"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="2"
+                                        Orientation="Horizontal"
+                                        Spacing="28"
+                                        VerticalAlignment="Center">
+
+                                <StackPanel>
+                                    <TextBlock Text="Uptime" FontSize="12" Opacity="0.75"/>
+                                    <TextBlock Text="00:00" FontSize="14"/>
+                                </StackPanel>
+
+                                <StackPanel>
+                                    <TextBlock Text="Users" FontSize="12" Opacity="0.75"/>
+                                    <TextBlock Text="0" FontSize="14"/>
+                                </StackPanel>
+
+                                <StackPanel>
+                                    <TextBlock Text="Port" FontSize="12" Opacity="0.75"/>
+                                    <TextBlock Text="None" FontSize="14"/>
+                                </StackPanel>
+
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </StackPanel>
+
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Server configuration"
+                               FontWeight="SemiBold"/>
+
+                    <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                            CornerRadius="4"
+                            Padding="16"
+                            MinHeight="66">
+
+                        <Grid ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="42"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <FontIcon Glyph="&#xE8AB;"
+                                      FontSize="20"
+                                      VerticalAlignment="Center"/>
+
+                            <StackPanel Grid.Column="1"
+                                        VerticalAlignment="Center">
+                                <TextBlock Text="Server port" FontSize="14"/>
+                                <TextBlock Text="Port used for incoming connections"
+                                           FontSize="12"
+                                           Opacity="0.75"/>
+                            </StackPanel>
+
+                            <NumberBox Grid.Column="2"
+                                       Width="140"
+                                       Value="5555"
+                                       SpinButtonPlacementMode="Hidden"
+                                       VerticalAlignment="Center"/>
+                        </Grid>
+                    </Border>
+
+                    <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                            CornerRadius="4"
+                            Padding="16"
+                            MinHeight="66">
+
+                        <Grid ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="42"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="362"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <FontIcon Glyph="&#xE8D7;"
+                                      FontSize="20"
+                                      VerticalAlignment="Center"/>
+
+                            <StackPanel Grid.Column="1"
+                                        VerticalAlignment="Center">
+                                <TextBlock Text="Certificate" FontSize="14"/>
+                                <TextBlock Text="Path to TLS certificate file"
+                                           FontSize="12"
+                                           Opacity="0.75"/>
+                            </StackPanel>
+
+                            <TextBox Grid.Column="2"
+                                     PlaceholderText="Certificate path"
+                                     VerticalAlignment="Center"/>
+
+                            <Button Grid.Column="3"
+                                    MinWidth="42"
+                                    MinHeight="42"
+                                    Padding="8,0"
+                                    VerticalAlignment="Center">
+                                <FontIcon Glyph="&#xE8B7;" FontSize="16"/>
+                            </Button>
+                        </Grid>
+                    </Border>
+
+                    <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                            CornerRadius="4"
+                            Padding="16"
+                            MinHeight="66">
+
+                        <Grid ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="42"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="420"/>
+                            </Grid.ColumnDefinitions>
+
+                            <FontIcon Glyph="&#xE72E;"
+                                      FontSize="20"
+                                      VerticalAlignment="Center"/>
+
+                            <StackPanel Grid.Column="1"
+                                        VerticalAlignment="Center">
+                                <TextBlock Text="Certificate password" FontSize="14"/>
+                                <TextBlock Text="Password used to protect certificate"
+                                           FontSize="12"
+                                           Opacity="0.75"/>
+                            </StackPanel>
+
+                            <PasswordBox Grid.Column="2"
+                                         PlaceholderText="Password"
+                                         VerticalAlignment="Center"/>
+                        </Grid>
+                    </Border>
+                </StackPanel>
+
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Actions"
+                               FontWeight="SemiBold"/>
+
+                    <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                            CornerRadius="4"
+                            Padding="16"
+                            MinHeight="66">
+
+                        <Grid ColumnSpacing="12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="Server controls" FontSize="14"/>
+                                <TextBlock Text="Generate certificate or control server state"
+                                           FontSize="12"
+                                           Opacity="0.75"/>
+                            </StackPanel>
+
+                            <Button Grid.Column="1">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <FontIcon Glyph="&#xE7F4;" FontSize="16"/>
+                                    <TextBlock Text="Generate certificate"/>
+                                </StackPanel>
+                            </Button>
+
+                            <Button Grid.Column="2" Content="Start server"/>
+                            <Button Grid.Column="3" Content="Stop server"/>
+                        </Grid>
+                    </Border>
+                </StackPanel>
+
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
 </Page>
