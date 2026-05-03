@@ -12,7 +12,7 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Navigation;
 using Microsoft.UI.Xaml.Shapes;
 using Windows.ApplicationModel;
-using Windows.ApplicationModel.Activation;
+using Microsoft.UI.Xaml;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
 
@@ -27,7 +27,7 @@ namespace KryakApp
     public partial class App : Application
     {
         private Window? _window;
-
+        public static Window? MainWindow { get; private set; }
         /// <summary>
         /// Initializes the singleton application object.  This is the first line of authored code
         /// executed, and as such is the logical equivalent of main() or WinMain().
@@ -36,15 +36,14 @@ namespace KryakApp
         {
             InitializeComponent();
         }
-
+        protected override void OnLaunched(LaunchActivatedEventArgs args)
+        {
+            MainWindow = new MainWindow();
+            MainWindow.Activate();
+        }
         /// <summary>
         /// Invoked when the application is launched.
         /// </summary>
         /// <param name="args">Details about the launch request and process.</param>
-        protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
-        {
-            _window = new MainWindow();
-            _window.Activate();
-        }
     }
 }

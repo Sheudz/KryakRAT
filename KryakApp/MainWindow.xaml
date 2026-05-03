@@ -14,6 +14,35 @@
     </Window.SystemBackdrop>
 
     <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <!--  TitleBar  -->
+            <RowDefinition Height="*" />
+            <!--  NavigationView  -->
+        </Grid.RowDefinitions>
 
+        <TitleBar x:Name="titleBar" IsBackButtonVisible="False" IsPaneToggleButtonVisible="True" PaneToggleRequested="TitleBar_PaneToggleRequested"/>
+
+        <NavigationView x:Name="navView" Grid.Row="1" IsBackButtonVisible="Collapsed" IsPaneToggleButtonVisible="False" SelectionChanged="navView_SelectionChanged">
+            <NavigationView.MenuItems>
+                <NavigationViewItem Content="Server"
+                                    Tag="Server"
+                                    Icon="World"/>
+
+                <NavigationViewItem Content="Nodes"
+                                    Tag="Nodes"
+                                    Icon="AllApps"/>
+
+                <NavigationViewItem Content="Builder"
+                                    Tag="Builder"
+                                    Icon="Edit"/>
+
+                <NavigationViewItem Content="Logs"
+                                    Tag="Logs"
+                                    Icon="Library"/>
+
+            </NavigationView.MenuItems>
+            <Frame x:Name="navFrame" />
+        </NavigationView>
     </Grid>
 </Window>
