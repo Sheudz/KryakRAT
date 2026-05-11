@@ -75,7 +75,7 @@ public sealed partial class ServerPage : Page
             await ShowErrorAsync(ex.Message, "Server start failed");
         }
     }
-    private void UptimeTimer_Tick(object sender, object e)
+    private void UptimeTimer_Tick(object? sender, object e)
     {
         var uptime = DateTime.UtcNow - _startTime;
 

@@ -1,8 +1,8 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Quic;
 using System.Net.Security;
-using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
@@ -56,7 +56,7 @@ public sealed class Server
 
         IsRunning = true;
 
-        _listenerTask = Task.Run(() => ListenerLoop(_cts.Token));
+        _listenerTask = ListenerLoop(_cts.Token);
     }
 
     public async Task StopServer()
@@ -77,7 +77,7 @@ public sealed class Server
             {
                 await _listenerTask;
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException) when (_cts?.IsCancellationRequested == true)
             {
             }
         }
@@ -93,11 +93,22 @@ public sealed class Server
         if (_listener == null)
             return;
 
-        while (!token.IsCancellationRequested)
+        try
         {
-            QuicConnection connection = await _listener.AcceptConnectionAsync(token);
+            while (!token.IsCancellationRequested)
+            {
+                QuicConnection connection = await _listener.AcceptConnectionAsync(token);
 
-            _ = Task.Run(() => HandleConnection(connection, token), token);
+                _ = HandleConnection(connection, token).ContinueWith(
+                    static t => Trace.TraceError(t.Exception?.GetBaseException().Message),
+                    TaskContinuationOptions.OnlyOnFaulted);
+            }
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+        }
+        catch (ObjectDisposedException) when (token.IsCancellationRequested)
+        {
         }
     }
 

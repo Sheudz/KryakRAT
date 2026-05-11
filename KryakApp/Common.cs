@@ -19,27 +19,34 @@ namespace KryakApp
         }
     }
 
-    public class User : INotifyPropertyChanged
+    public class UserData : INotifyPropertyChanged
     {
-        private string _username;
-        private string _tag;
-        private string _country;
-        private string _os;
+        private string _userIPAddress = string.Empty;
+        private string _victimTag = string.Empty;
+        private string _userName = string.Empty;
+        private string _country = string.Empty;
+        private string _os = string.Empty;
         private bool _admin;
         private bool _cam;
         private bool _mic;
-        private string _ping;
+        private string _ping = string.Empty;
+        private string _client = string.Empty;
+        public string UserIPAddress
+        {
+            get => _userIPAddress;
+            set => Set(ref _userIPAddress, value);
+        }
 
         public string Username
         {
-            get => _username;
-            set => Set(ref _username, value);
+            get => _userName;
+            set => Set(ref _userName, value);
         }
 
-        public string Tag
+        public string VictimTag
         {
-            get => _tag;
-            set => Set(ref _tag, value);
+            get => _victimTag;
+            set => Set(ref _victimTag, value);
         }
 
         public string Country
@@ -48,25 +55,25 @@ namespace KryakApp
             set => Set(ref _country, value);
         }
 
-        public string Os
+        public string UserOS
         {
             get => _os;
             set => Set(ref _os, value);
         }
 
-        public bool Admin
+        public bool AdminStatus
         {
             get => _admin;
             set => Set(ref _admin, value);
         }
 
-        public bool Cam
+        public bool CameraStatus
         {
             get => _cam;
             set => Set(ref _cam, value);
         }
 
-        public bool Mic
+        public bool MicrophoneStatus
         {
             get => _mic;
             set => Set(ref _mic, value);
@@ -76,6 +83,11 @@ namespace KryakApp
         {
             get => _ping;
             set => Set(ref _ping, value);
+        }
+        public string Client
+        {
+            get => _client;
+            set => Set(ref _client, value);
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;

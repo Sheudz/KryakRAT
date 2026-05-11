@@ -1,31 +1,61 @@
-using Microsoft.UI.Xaml;
+﻿using KryakApp.Controls;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Controls.Primitives;
-using Microsoft.UI.Xaml.Data;
-using Microsoft.UI.Xaml.Input;
-using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Navigation;
 using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Runtime.InteropServices.WindowsRuntime;
-using Windows.Foundation;
-using Windows.Foundation.Collections;
-
-// To learn more about WinUI, the WinUI project structure,
-// and more about our project templates, see: http://aka.ms/winui-project-info.
+using System.Collections.ObjectModel;
 
 namespace KryakApp.Pages
 {
-    /// <summary>
-    /// An empty page that can be used on its own or navigated to within a Frame.
-    /// </summary>
     public sealed partial class NodesPage : Page
     {
         public NodesPage()
         {
             InitializeComponent();
+
+            PeopleGrid.Columns = new ObservableCollection<DataGridColumnDefinition>
+            {
+                new() { Header = "IP", PropertyName = nameof(UserData.UserIPAddress) },
+                new() { Header = "Tag", PropertyName = nameof(UserData.VictimTag) },
+                new() { Header = "Username", PropertyName = nameof(UserData.Username) },
+                new() { Header = "Country", PropertyName = nameof(UserData.Country) },
+                new() { Header = "OS", PropertyName = nameof(UserData.UserOS) },
+                new() { Header = "Admin", PropertyName = nameof(UserData.AdminStatus) },
+                new() { Header = "Cam", PropertyName = nameof(UserData.CameraStatus) },
+                new() { Header = "Mic", PropertyName = nameof(UserData.MicrophoneStatus) },
+                new() { Header = "Ping", PropertyName = nameof(UserData.Ping) }
+            };
+
+            for (int i = 1; i <= 21; i++)
+            {
+                PeopleGrid.Items.Add(new UserData
+                {
+                    UserIPAddress = "123.45.67.8",
+                    VictimTag = "AllahSvinka",
+                    Username = i.ToString(),
+                    Country = "Hohlostan",
+                    UserOS = "Swindows 9",
+                    AdminStatus = true,
+                    CameraStatus = false,
+                    MicrophoneStatus = true,
+                    Ping = "67",
+                    Client = "test"
+                });
+            }
+
+            PeopleGrid.RowRightClick += (s, e) =>
+            {
+                if (e.RowItem is UserData row)
+                {
+                    ContentDialog dialog = new()
+                    {
+                        Title = "test",
+                        Content = row.Username,
+                        CloseButtonText = "OK",
+                        XamlRoot = this.XamlRoot
+                    };
+
+                    dialog.ShowAsync();
+                }
+            };
         }
     }
 }
