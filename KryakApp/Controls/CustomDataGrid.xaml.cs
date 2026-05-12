@@ -7,17 +7,20 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using Windows.Foundation;
 
 namespace KryakApp.Controls
 {
     public sealed class CustomDataGridRowRightClickEventArgs : EventArgs
     {
-        public CustomDataGridRowRightClickEventArgs(object rowItem)
+        public CustomDataGridRowRightClickEventArgs(object rowItem, Point position)
         {
             RowItem = rowItem;
+            Position = position;
         }
 
         public object RowItem { get; }
+        public Point Position { get; }
     }
 
     public sealed class DataGridColumnDefinition
@@ -257,7 +260,14 @@ namespace KryakApp.Controls
 
             row.RightTapped += (sender, args) =>
             {
-                RowRightClick?.Invoke(this, new CustomDataGridRowRightClickEventArgs(rowItem));
+                RowRightClick?.Invoke(
+                    this,
+                    new CustomDataGridRowRightClickEventArgs(
+                        rowItem,
+                        args.GetPosition(this)
+                    )
+                );
+
                 args.Handled = true;
             };
 
