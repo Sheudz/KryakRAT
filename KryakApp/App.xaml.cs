@@ -27,6 +27,7 @@ namespace KryakApp
     public partial class App : Application
     {
         public static Server Server { get; } = new();
+        public static ConnectedUsersStore ConnectedUsers { get; } = new();
         public static Window? MainWindow { get; private set; }
         /// <summary>
         /// Initializes the singleton application object.  This is the first line of authored code
@@ -35,6 +36,7 @@ namespace KryakApp
         public App()
         {
             InitializeComponent();
+            Server.UserConnected += Server_UserConnected;
         }
         protected override void OnLaunched(LaunchActivatedEventArgs args)
         {
@@ -45,5 +47,16 @@ namespace KryakApp
         /// Invoked when the application is launched.
         /// </summary>
         /// <param name="args">Details about the launch request and process.</param>
+
+        private static void Server_UserConnected(UserData userData)
+        {
+            if (MainWindow?.DispatcherQueue == null)
+                return;
+
+            MainWindow.DispatcherQueue.TryEnqueue(() =>
+            {
+                ConnectedUsers.Add(userData);
+            });
+        }
     }
 }

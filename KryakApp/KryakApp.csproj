@@ -14,6 +14,12 @@
 	<EnablePreviewFeatures>true</EnablePreviewFeatures>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Remove="KryakDebugClient\**\*.cs" />
+    <EmbeddedResource Remove="KryakDebugClient\**\*" />
+    <None Remove="KryakDebugClient\**\*" />
+    <Page Remove="KryakDebugClient\**\*" />
+  </ItemGroup>
+  <ItemGroup>
     <None Remove="Pages\BuilderPage.xaml" />
     <None Remove="Pages\LogsPage.xaml" />
     <None Remove="Pages\NodesPage.xaml" />

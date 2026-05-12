@@ -1,4 +1,5 @@
 ﻿using KryakApp.Controls;
+using KryakApp.Services;
 using Microsoft.UI.Xaml.Controls;
 using System;
 using System.Collections.ObjectModel;
@@ -12,7 +13,6 @@ namespace KryakApp.Pages
             InitializeComponent();
 
             SetupGrid();
-            LoadTestUsers();
             SetupGridEvents();
         }
 
@@ -30,26 +30,8 @@ namespace KryakApp.Pages
                 new() { Header = "Mic", PropertyName = nameof(UserData.MicrophoneStatus) },
                 new() { Header = "Ping", PropertyName = nameof(UserData.Ping) }
             };
-        }
 
-        private void LoadTestUsers()
-        {
-            for (int i = 1; i <= 21; i++)
-            {
-                PeopleGrid.Items.Add(new UserData
-                {
-                    UserIPAddress = "123.45.67.8",
-                    VictimTag = "AllahSvinka",
-                    Username = i.ToString(),
-                    Country = "Hohlostan",
-                    UserOS = "Swindows 9",
-                    AdminStatus = true,
-                    CameraStatus = false,
-                    MicrophoneStatus = true,
-                    Ping = "67",
-                    Client = "test"
-                });
-            }
+            PeopleGrid.Items = App.ConnectedUsers.Users;
         }
 
         private void SetupGridEvents()
@@ -73,16 +55,35 @@ namespace KryakApp.Pages
         {
             MenuFlyout menu = new();
 
-            MenuFlyoutItem ManagerItem = new() { Text = "Manager" };
-            ManagerItem.Click += (_, _) => { Manager(row.Client); };
-            MenuFlyoutItem RemoteDesktopItem = new() { Text = "Remote desktop" };
-            RemoteDesktopItem.Click += (_, _) => { RemoteDesktop(row.Client); };
-            MenuFlyoutItem RemoteConsoleItem = new() { Text = "Remote console" };
-            RemoteConsoleItem.Click += (_, _) => { RemoteConsole(row.Client); };
-            MenuFlyoutItem RunFileItem = new() { Text = "Run file" };
-            RunFileItem.Click += (_, _) => { RunFile(row.Client); };
-            MenuFlyoutItem ServerItem = new() { Text = "Server" };
-            ServerItem.Click += (_, _) => { Server(row.Client); };
+            MenuFlyoutItem ManagerItem = new()
+            {
+                Text = "Manager",
+                Icon = new SymbolIcon(Symbol.Contact)
+            };
+
+            MenuFlyoutItem RemoteDesktopItem = new()
+            {
+                Text = "Remote desktop",
+                Icon = new SymbolIcon(Symbol.Remote)
+            };
+
+            MenuFlyoutItem RemoteConsoleItem = new()
+            {
+                Text = "Remote console",
+                Icon = new SymbolIcon(Symbol.AllApps)
+            };
+
+            MenuFlyoutItem RunFileItem = new()
+            {
+                Text = "Run file",
+                Icon = new SymbolIcon(Symbol.OpenFile)
+            };
+
+            MenuFlyoutItem ServerItem = new()
+            {
+                Text = "Server",
+                Icon = new SymbolIcon(Symbol.World)
+            };
 
             menu.Items.Add(ManagerItem);
             menu.Items.Add(RemoteDesktopItem);

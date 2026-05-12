@@ -1,9 +1,12 @@
 ﻿using System;
 using System.Diagnostics;
+using System.IO;
 using System.Net;
 using System.Net.Quic;
 using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
+using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -14,6 +17,12 @@ public sealed class Server
     private QuicListener? _listener;
     private CancellationTokenSource? _cts;
     private Task? _listenerTask;
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
+
+    public event Action<UserData>? UserConnected;
 
     public bool IsRunning { get; private set; }
 
@@ -116,8 +125,27 @@ public sealed class Server
     {
         await using (connection)
         {
-            // TODO: обработка клиента
-            await Task.CompletedTask;
+            QuicStream stream = await connection.AcceptInboundStreamAsync(token);
+            await using (stream)
+            {
+                using MemoryStream buffer = new();
+                await stream.CopyToAsync(buffer, token);
+                string json = Encoding.UTF8.GetString(buffer.ToArray());
+
+                if (string.IsNullOrWhiteSpace(json))
+                    return;
+
+                UserData? userData = JsonSerializer.Deserialize<UserData>(json, JsonOptions);
+                if (userData == null)
+                    return;
+
+                if (string.IsNullOrWhiteSpace(userData.UserIPAddress) && connection.RemoteEndPoint is IPEndPoint endpoint)
+                {
+                    userData.UserIPAddress = endpoint.Address.ToString();
+                }
+
+                UserConnected?.Invoke(userData);
+            }
         }
     }
 }

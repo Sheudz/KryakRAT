@@ -6,8 +6,10 @@ using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Security.Principal;
+using System.Net.Quic;
+using System.Text.Json.Serialization;
 
-namespace KryakApp
+namespace KryakApp.Services
 {
     public class Common()
     {
@@ -30,7 +32,7 @@ namespace KryakApp
         private bool _cam;
         private bool _mic;
         private string _ping = string.Empty;
-        private string _client = string.Empty;
+        private QuicConnection? _client;
         public string UserIPAddress
         {
             get => _userIPAddress;
@@ -84,7 +86,8 @@ namespace KryakApp
             get => _ping;
             set => Set(ref _ping, value);
         }
-        public string Client
+        [JsonIgnore]
+        public QuicConnection? Client
         {
             get => _client;
             set => Set(ref _client, value);
