@@ -5,8 +5,8 @@
 
     <ScrollViewer>
         <StackPanel Padding="22" Spacing="18">
-            <StackPanel Width="1000"
-                        HorizontalAlignment="Center"
+            <StackPanel MaxWidth="1000"
+                        HorizontalAlignment="Stretch"
                         Spacing="18">
             <TextBlock Text="Settings"
                        FontSize="28"

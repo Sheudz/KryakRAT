@@ -11,6 +11,11 @@ public sealed class ConnectedUsersStore
         Users.Add(user);
     }
 
+    public void Remove(UserData user)
+    {
+        Users.Remove(user);
+    }
+
     public void Clear()
     {
         Users.Clear();

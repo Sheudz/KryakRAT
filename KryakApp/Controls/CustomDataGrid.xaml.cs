@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using System.ComponentModel;
 using Windows.Foundation;
 
 namespace KryakApp.Controls
@@ -37,6 +38,8 @@ namespace KryakApp.Controls
     public sealed partial class CustomDataGrid : UserControl
     {
         private readonly List<double> _columnWidths = new();
+        private readonly HashSet<INotifyPropertyChanged> _trackedRows = [];
+        private readonly Dictionary<object, Grid> _rowByItem = [];
         private bool _isPointerDownOnHeader;
         private bool _isDraggingHeader;
         private bool _isResizing;
@@ -48,7 +51,7 @@ namespace KryakApp.Controls
         private int _dragColumnIndex = -1;
         private DataGridColumnDefinition? _dragColumn;
         private double _pressedHeaderX;
-        private readonly Brush _dragColumnEdgeBrush = new SolidColorBrush(Windows.UI.Color.FromArgb(140, 76, 163, 255));
+        private readonly Brush _dragColumnEdgeBrush = new SolidColorBrush(global::Windows.UI.Color.FromArgb(140, 76, 163, 255));
 
         public static readonly DependencyProperty ColumnsProperty = DependencyProperty.Register(
             nameof(Columns),
@@ -114,11 +117,13 @@ namespace KryakApp.Controls
             if (e.OldValue is ObservableCollection<object> oldItems)
             {
                 oldItems.CollectionChanged -= control.Items_CollectionChanged;
+                control.UntrackRowChanges(oldItems);
             }
 
             if (e.NewValue is ObservableCollection<object> newItems)
             {
                 newItems.CollectionChanged += control.Items_CollectionChanged;
+                control.TrackRowChanges(newItems);
             }
 
             control.RenderRows();
@@ -131,7 +136,128 @@ namespace KryakApp.Controls
 
         private void Items_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
         {
+            SyncTrackedRows();
             RenderRows();
+        }
+
+        private void TrackRowChanges(IEnumerable<object> items)
+        {
+            foreach (object item in items)
+            {
+                if (item is not INotifyPropertyChanged notify)
+                {
+                    continue;
+                }
+
+                if (_trackedRows.Add(notify))
+                {
+                    notify.PropertyChanged += Row_PropertyChanged;
+                }
+            }
+        }
+
+        private void UntrackRowChanges(IEnumerable<object> items)
+        {
+            foreach (object item in items)
+            {
+                if (item is not INotifyPropertyChanged notify)
+                {
+                    continue;
+                }
+
+                if (_trackedRows.Remove(notify))
+                {
+                    notify.PropertyChanged -= Row_PropertyChanged;
+                }
+            }
+        }
+
+        private void SyncTrackedRows()
+        {
+            if (Items == null)
+            {
+                List<INotifyPropertyChanged> tracked = new(_trackedRows.Count);
+                tracked.AddRange(_trackedRows);
+                UntrackRowChanges(tracked);
+                _trackedRows.Clear();
+                return;
+            }
+
+            HashSet<INotifyPropertyChanged> current = [];
+            foreach (object item in Items)
+            {
+                if (item is INotifyPropertyChanged notify)
+                {
+                    current.Add(notify);
+                }
+            }
+
+            List<INotifyPropertyChanged> removed = [];
+            foreach (INotifyPropertyChanged tracked in _trackedRows)
+            {
+                if (!current.Contains(tracked))
+                {
+                    removed.Add(tracked);
+                }
+            }
+
+            foreach (INotifyPropertyChanged removedItem in removed)
+            {
+                removedItem.PropertyChanged -= Row_PropertyChanged;
+                _trackedRows.Remove(removedItem);
+            }
+
+            foreach (INotifyPropertyChanged currentItem in current)
+            {
+                if (_trackedRows.Add(currentItem))
+                {
+                    currentItem.PropertyChanged += Row_PropertyChanged;
+                }
+            }
+        }
+
+        private void Row_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (sender is not object rowItem)
+            {
+                return;
+            }
+
+            if (!DispatcherQueue.HasThreadAccess)
+            {
+                DispatcherQueue.TryEnqueue(() => Row_PropertyChanged(sender, e));
+                return;
+            }
+
+            if (Columns == null || string.IsNullOrWhiteSpace(e.PropertyName))
+            {
+                return;
+            }
+
+            if (!_rowByItem.TryGetValue(rowItem, out Grid? row))
+            {
+                return;
+            }
+
+            int columnIndex = -1;
+            for (int i = 0; i < Columns.Count; i++)
+            {
+                if (string.Equals(Columns[i].PropertyName, e.PropertyName, StringComparison.Ordinal))
+                {
+                    columnIndex = i;
+                    break;
+                }
+            }
+
+            if (columnIndex < 0 || columnIndex >= row.Children.Count)
+            {
+                return;
+            }
+
+            if (row.Children[columnIndex] is Border cell && cell.Child is TextBlock text)
+            {
+                text.Text = ResolveCellValue(rowItem, e.PropertyName);
+            }
         }
 
         private void RenderAll()
@@ -188,6 +314,7 @@ namespace KryakApp.Controls
                 var headerBorder = new Border
                 {
                     Padding = new Thickness(12, 0, 8, 0),
+                    Background = new SolidColorBrush(global::Windows.UI.Color.FromArgb(0, 255, 255, 255)),
                     Tag = i
                 };
 
@@ -211,6 +338,7 @@ namespace KryakApp.Controls
                     Width = 12,
                     HorizontalAlignment = HorizontalAlignment.Right,
                     VerticalAlignment = VerticalAlignment.Stretch,
+                    Background = new SolidColorBrush(global::Windows.UI.Color.FromArgb(0, 255, 255, 255)),
                     Tag = i
                 };
 
@@ -236,6 +364,7 @@ namespace KryakApp.Controls
         private void RenderRows()
         {
             RowsPanel.Children.Clear();
+            _rowByItem.Clear();
 
             if (Items == null || Columns == null)
             {
@@ -244,7 +373,10 @@ namespace KryakApp.Controls
 
             for (int rowIndex = 0; rowIndex < Items.Count; rowIndex++)
             {
-                RowsPanel.Children.Add(BuildRow(Items[rowIndex]));
+                object item = Items[rowIndex];
+                Grid row = BuildRow(item);
+                _rowByItem[item] = row;
+                RowsPanel.Children.Add(row);
             }
         }
 

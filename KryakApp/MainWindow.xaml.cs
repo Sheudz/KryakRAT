@@ -1,21 +1,51 @@
 using KryakApp.Pages;
 using Microsoft.UI;
+using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using System;
+using System.Runtime.InteropServices;
+using Windows.UI.ViewManagement;
 using WinRT.Interop;
-using Microsoft.UI.Windowing;
 
 
 namespace KryakApp
 {
     public sealed partial class MainWindow : Window
     {
+        private const int MinWindowWidth = 950;
+        private const int MinWindowHeight = 600;
+        private const int WmGetMinMaxInfo = 0x0024;
+        private const int GwlWndProc = -4;
+        private readonly nint _windowHandle;
+        private readonly WndProcDelegate _wndProcDelegate;
+        private readonly nint _previousWndProc;
+
         public MainWindow()
         {
             InitializeComponent();
             this.ExtendsContentIntoTitleBar = true;
             this.SetTitleBar(titleBar);
+
+            _windowHandle = WindowNative.GetWindowHandle(this);
+            _wndProcDelegate = WindowProc;
+            nint wndProcPtr = Marshal.GetFunctionPointerForDelegate(_wndProcDelegate);
+            _previousWndProc = SetWindowLongPtr(_windowHandle, GwlWndProc, wndProcPtr);
+
             navView.SelectedItem = navView.MenuItems[0];
+        }
+
+        private nint WindowProc(nint hWnd, uint msg, nint wParam, nint lParam)
+        {
+            if (msg == WmGetMinMaxInfo)
+            {
+                MINMAXINFO minMaxInfo = Marshal.PtrToStructure<MINMAXINFO>(lParam);
+                minMaxInfo.ptMinTrackSize.x = MinWindowWidth;
+                minMaxInfo.ptMinTrackSize.y = MinWindowHeight;
+                Marshal.StructureToPtr(minMaxInfo, lParam, fDeleteOld: false);
+            }
+
+            return CallWindowProc(_previousWndProc, hWnd, msg, wParam, lParam);
         }
         private void navView_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
         {
@@ -98,5 +128,30 @@ namespace KryakApp
                     break;
             }
         }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct POINT
+        {
+            public int x;
+            public int y;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct MINMAXINFO
+        {
+            public POINT ptReserved;
+            public POINT ptMaxSize;
+            public POINT ptMaxPosition;
+            public POINT ptMinTrackSize;
+            public POINT ptMaxTrackSize;
+        }
+
+        private delegate nint WndProcDelegate(nint hWnd, uint msg, nint wParam, nint lParam);
+
+        [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW", SetLastError = true)]
+        private static extern nint SetWindowLongPtr(nint hWnd, int nIndex, nint dwNewLong);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern nint CallWindowProc(nint lpPrevWndFunc, nint hWnd, uint msg, nint wParam, nint lParam);
     }
 }

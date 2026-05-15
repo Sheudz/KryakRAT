@@ -37,6 +37,8 @@ namespace KryakApp
         {
             InitializeComponent();
             Server.UserConnected += Server_UserConnected;
+            Server.UserPingUpdated += Server_UserPingUpdated;
+            Server.UserDisconnected += Server_UserDisconnected;
         }
         protected override void OnLaunched(LaunchActivatedEventArgs args)
         {
@@ -56,6 +58,28 @@ namespace KryakApp
             MainWindow.DispatcherQueue.TryEnqueue(() =>
             {
                 ConnectedUsers.Add(userData);
+            });
+        }
+
+        private static void Server_UserPingUpdated(UserData userData, string ping)
+        {
+            if (MainWindow?.DispatcherQueue == null)
+                return;
+
+            MainWindow.DispatcherQueue.TryEnqueue(() =>
+            {
+                userData.Ping = ping;
+            });
+        }
+
+        private static void Server_UserDisconnected(UserData userData)
+        {
+            if (MainWindow?.DispatcherQueue == null)
+                return;
+
+            MainWindow.DispatcherQueue.TryEnqueue(() =>
+            {
+                ConnectedUsers.Remove(userData);
             });
         }
     }

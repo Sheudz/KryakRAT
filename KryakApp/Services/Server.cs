@@ -5,7 +5,9 @@ using System.Net;
 using System.Net.Quic;
 using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
-using System.Text;
+using System.Buffers.Binary;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -14,15 +16,23 @@ namespace KryakApp.Services;
 
 public sealed class Server
 {
+    private const int MaxFrameSizeBytes = 64 * 1024;
+    private const int MaxPendingPingsPerClient = 32;
+    private static readonly TimeSpan PendingPingTimeout = TimeSpan.FromSeconds(30);
+
     private QuicListener? _listener;
     private CancellationTokenSource? _cts;
     private Task? _listenerTask;
+    private Task? _pingTask;
+    private readonly ConcurrentDictionary<QuicConnection, ClientSession> _sessions = new();
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true
     };
 
     public event Action<UserData>? UserConnected;
+    public event Action<UserData, string>? UserPingUpdated;
+    public event Action<UserData>? UserDisconnected;
 
     public bool IsRunning { get; private set; }
 
@@ -66,6 +76,7 @@ public sealed class Server
         IsRunning = true;
 
         _listenerTask = ListenerLoop(_cts.Token);
+        _pingTask = PingLoop(_cts.Token);
     }
 
     public async Task StopServer()
@@ -91,10 +102,23 @@ public sealed class Server
             }
         }
 
+        if (_pingTask != null)
+        {
+            try
+            {
+                await _pingTask;
+            }
+            catch (OperationCanceledException) when (_cts?.IsCancellationRequested == true)
+            {
+            }
+        }
+
         _cts?.Dispose();
+        _sessions.Clear();
         _cts = null;
         _listener = null;
         _listenerTask = null;
+        _pingTask = null;
     }
 
     private async Task ListenerLoop(CancellationToken token)
@@ -123,28 +147,281 @@ public sealed class Server
 
     private async Task HandleConnection(QuicConnection connection, CancellationToken token)
     {
-        await using (connection)
+        UserData? connectedUser = null;
+        object sync = new();
+
+        try
         {
-            QuicStream stream = await connection.AcceptInboundStreamAsync(token);
+            await using (connection)
+            {
+                while (!token.IsCancellationRequested)
+                {
+                    QuicStream stream = await connection.AcceptInboundStreamAsync(token);
+
+                    _ = ProcessStreamAsync(stream, connection, token, sync, getUser: () => connectedUser, setUser: user => connectedUser = user).ContinueWith(
+                        static t => Trace.TraceError(t.Exception?.GetBaseException().Message),
+                        TaskContinuationOptions.OnlyOnFaulted);
+                }
+            }
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+        }
+        catch (ObjectDisposedException) when (token.IsCancellationRequested)
+        {
+        }
+        finally
+        {
+            _sessions.TryRemove(connection, out _);
+
+            if (connectedUser != null)
+            {
+                UserDisconnected?.Invoke(connectedUser);
+            }
+        }
+    }
+
+    private async Task ProcessStreamAsync(
+        QuicStream stream,
+        QuicConnection connection,
+        CancellationToken token,
+        object sync,
+        Func<UserData?> getUser,
+        Action<UserData> setUser)
+    {
+        try
+        {
             await using (stream)
             {
-                using MemoryStream buffer = new();
-                await stream.CopyToAsync(buffer, token);
-                string json = Encoding.UTF8.GetString(buffer.ToArray());
-
-                if (string.IsNullOrWhiteSpace(json))
-                    return;
-
-                UserData? userData = JsonSerializer.Deserialize<UserData>(json, JsonOptions);
-                if (userData == null)
-                    return;
-
-                if (string.IsNullOrWhiteSpace(userData.UserIPAddress) && connection.RemoteEndPoint is IPEndPoint endpoint)
+                while (!token.IsCancellationRequested)
                 {
-                    userData.UserIPAddress = endpoint.Address.ToString();
+                    string frame = await ReadFrameAsync(stream, token);
+                    ClientMessage? message = JsonSerializer.Deserialize<ClientMessage>(frame, JsonOptions);
+                    if (message is null)
+                    {
+                        continue;
+                    }
+
+                    if (string.Equals(message.Channel, ChannelNames.Main, StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (string.Equals(message.Type, MessageTypes.Hello, StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (message.User is null)
+                            {
+                                continue;
+                            }
+
+                            lock (sync)
+                            {
+                                if (getUser() == null)
+                                {
+                                    UserData user = message.User;
+                                    if (string.IsNullOrWhiteSpace(user.UserIPAddress) && connection.RemoteEndPoint is IPEndPoint endpoint)
+                                    {
+                                        user.UserIPAddress = endpoint.Address.ToString();
+                                    }
+
+                                    setUser(user);
+                                    _sessions[connection] = new ClientSession(connection, user);
+                                    UserConnected?.Invoke(user);
+                                }
+                            }
+
+                            continue;
+                        }
+
+                        if (string.Equals(message.Type, MessageTypes.Pong, StringComparison.OrdinalIgnoreCase))
+                        {
+                            UserData? user = getUser();
+                            if (user == null || string.IsNullOrWhiteSpace(message.PingId))
+                            {
+                                continue;
+                            }
+
+                            if (_sessions.TryGetValue(connection, out ClientSession? session)
+                                && session.TryResolvePing(message.PingId, out long rttMs))
+                            {
+                                UserPingUpdated?.Invoke(user, rttMs.ToString());
+                            }
+                        }
+
+                        continue;
+                    }
+                }
+            }
+        }
+        catch (EndOfStreamException)
+        {
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+        }
+        catch (ObjectDisposedException) when (token.IsCancellationRequested)
+        {
+        }
+    }
+
+    private async Task PingLoop(CancellationToken token)
+    {
+        using PeriodicTimer timer = new(TimeSpan.FromSeconds(5));
+
+        try
+        {
+            while (await timer.WaitForNextTickAsync(token))
+            {
+                foreach (ClientSession session in _sessions.Values)
+                {
+                    session.PruneExpiredPings(PendingPingTimeout);
+
+                    _ = SendPingRequestAsync(session, token).ContinueWith(
+                        static t => Trace.TraceError(t.Exception?.GetBaseException().Message),
+                        TaskContinuationOptions.OnlyOnFaulted);
+                }
+            }
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+        }
+    }
+
+    private async Task SendPingRequestAsync(ClientSession session, CancellationToken token)
+    {
+        string pingId = Guid.NewGuid().ToString("N");
+        if (!session.TrackPing(pingId, MaxPendingPingsPerClient))
+        {
+            return;
+        }
+
+        ClientMessage pingRequest = new()
+        {
+            Channel = ChannelNames.Ping,
+            Type = MessageTypes.PingRequest,
+            PingId = pingId
+        };
+
+        QuicStream outbound = await session.Connection.OpenOutboundStreamAsync(QuicStreamType.Unidirectional, token);
+        await using (outbound)
+        {
+            await WriteFrameAsync(outbound, pingRequest, token);
+        }
+    }
+
+    private static async Task<string> ReadFrameAsync(Stream stream, CancellationToken token)
+    {
+        byte[] lengthBuffer = new byte[4];
+        await stream.ReadExactlyAsync(lengthBuffer.AsMemory(), token);
+
+        int length = checked((int)BinaryPrimitives.ReadUInt32BigEndian(lengthBuffer));
+        if (length <= 0 || length > MaxFrameSizeBytes)
+        {
+            throw new InvalidDataException("Invalid frame length.");
+        }
+
+        byte[] payload = new byte[length];
+        await stream.ReadExactlyAsync(payload.AsMemory(), token);
+
+        return System.Text.Encoding.UTF8.GetString(payload);
+    }
+
+    private static async Task WriteFrameAsync(Stream stream, ClientMessage message, CancellationToken token)
+    {
+        byte[] payload = JsonSerializer.SerializeToUtf8Bytes(message, JsonOptions);
+        byte[] lengthBuffer = new byte[4];
+        BinaryPrimitives.WriteUInt32BigEndian(lengthBuffer, checked((uint)payload.Length));
+
+        await stream.WriteAsync(lengthBuffer.AsMemory(), token);
+        await stream.WriteAsync(payload.AsMemory(), token);
+    }
+
+    private static class ChannelNames
+    {
+        public const string Main = "main";
+        public const string Ping = "ping";
+    }
+
+    private static class MessageTypes
+    {
+        public const string Hello = "hello";
+        public const string PingRequest = "ping_request";
+        public const string Pong = "pong";
+    }
+
+    private sealed class ClientMessage
+    {
+        public string Channel { get; set; } = string.Empty;
+        public string Type { get; set; } = string.Empty;
+        public UserData? User { get; set; }
+        public string? Ping { get; set; }
+        public string? PingId { get; set; }
+    }
+
+    private sealed class ClientSession
+    {
+        private readonly Dictionary<string, DateTimeOffset> _pendingPings = new();
+        private readonly Queue<string> _pendingOrder = new();
+        private readonly object _sync = new();
+
+        public ClientSession(QuicConnection connection, UserData user)
+        {
+            Connection = connection;
+            User = user;
+        }
+
+        public QuicConnection Connection { get; }
+        public UserData User { get; }
+
+        public bool TrackPing(string pingId, int limit)
+        {
+            lock (_sync)
+            {
+                if (_pendingPings.Count >= limit)
+                {
+                    return false;
                 }
 
-                UserConnected?.Invoke(userData);
+                _pendingPings[pingId] = DateTimeOffset.UtcNow;
+                _pendingOrder.Enqueue(pingId);
+                return true;
+            }
+        }
+
+        public void PruneExpiredPings(TimeSpan timeout)
+        {
+            lock (_sync)
+            {
+                DateTimeOffset now = DateTimeOffset.UtcNow;
+                while (_pendingOrder.Count > 0)
+                {
+                    string pingId = _pendingOrder.Peek();
+                    if (!_pendingPings.TryGetValue(pingId, out DateTimeOffset sentAt))
+                    {
+                        _pendingOrder.Dequeue();
+                        continue;
+                    }
+
+                    if (now - sentAt < timeout)
+                    {
+                        break;
+                    }
+
+                    _pendingOrder.Dequeue();
+                    _pendingPings.Remove(pingId);
+                }
+            }
+        }
+
+        public bool TryResolvePing(string pingId, out long rttMs)
+        {
+            lock (_sync)
+            {
+                if (!_pendingPings.Remove(pingId, out DateTimeOffset sentAt))
+                {
+                    rttMs = 0;
+                    return false;
+                }
+
+                rttMs = Math.Max(0, (long)(DateTimeOffset.UtcNow - sentAt).TotalMilliseconds);
+                return true;
             }
         }
     }
