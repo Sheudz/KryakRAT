@@ -65,7 +65,7 @@
                                                         <ColumnDefinition Width="Auto"/>
                                                     </Grid.ColumnDefinitions>
 
-                                                    <TextBlock Text="{Binding}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                                    <TextBlock Text="{Binding DisplayText}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
 
                                                     <Button Grid.Column="1"
                                                             Tag="{Binding}"

