@@ -231,7 +231,8 @@
                     Content="Build"
                     HorizontalAlignment="Right"
                     MinWidth="120"
-                    Style="{StaticResource AccentButtonStyle}"/>
+                    Style="{StaticResource AccentButtonStyle}"
+                    Click="BuildButton_Click"/>
         </Grid>
     </Grid>
 </Page>

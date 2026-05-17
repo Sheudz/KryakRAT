@@ -1,7 +1,8 @@
-using Microsoft.UI.Xaml.Controls;
+﻿using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml;
 using System;
 using System.Collections.ObjectModel;
+using System.Threading.Tasks;
 using Windows.Storage;
 using Windows.Storage.Pickers;
 using WinRT.Interop;
@@ -189,6 +190,186 @@ namespace KryakApp.Pages
         private void UpdateTrustButtonState()
         {
             TrustCurrentCertificateButton.IsEnabled = App.Server.IsRunning && PinnedModeRadio.IsChecked == true;
+        }
+
+        private async void BuildButton_Click(object sender, RoutedEventArgs e)
+        {
+            bool? hasGo = null;
+
+            try
+            {
+                System.Diagnostics.Process.Start("go", "version")?.Kill();
+                hasGo = true;
+            }
+            catch
+            {
+                hasGo = System.IO.File.Exists(System.IO.Path.Combine(GetPackagedLocalPath(), "go", "bin", "go.exe"));
+            }
+            if (hasGo == false)
+            {
+                ContentDialog dialog = new()
+                {
+                    Title = "Go Not Found",
+                    Content = "Go compiler is required to build the client.\n\nYou can install Go manually or use the automatic installer.",
+                    XamlRoot = XamlRoot,
+
+                    PrimaryButtonText = "Install Automatically",
+                    CloseButtonText = "Cancel",
+                    DefaultButton = ContentDialogButton.Primary
+                };
+
+                ContentDialogResult result = await dialog.ShowAsync();
+                if (result == ContentDialogResult.Primary)
+                {
+                    bool installed = await InstallGoWithProgressAsync();
+                }
+                return;
+            }
+            if (_connections.Count == 0)
+            {
+                ContentDialog dialog = new()
+                {
+                    Title = "No Endpoints",
+                    Content = "Please add at least one connection endpoint before building the client.",
+                    XamlRoot = XamlRoot,
+                };
+                dialog.PrimaryButtonText = "OK";
+                _ = dialog.ShowAsync();
+                return;
+            }
+            if (PinnedModeRadio.IsChecked == true && string.IsNullOrWhiteSpace(FingerprintTextBox.Text))
+            {
+                ContentDialog dialog = new()
+                {
+                    Title = "No Certificate Fingerprint",
+                    Content = "Please trust the current server certificate or enter a fingerprint manually.",
+                    XamlRoot = XamlRoot,
+                };
+                dialog.PrimaryButtonText = "OK";
+                _ = dialog.ShowAsync();
+                return;
+            }
+            if (CustomIconCheckBox.IsChecked == true && System.IO.File.Exists(IconPathTextBox.Text))
+            {
+                ContentDialog dialog = new()
+                {
+                    Title = "No Icon Path",
+                    Content = "Please select an icon file or uncheck the custom icon option.",
+                    XamlRoot = XamlRoot,
+                };
+                dialog.PrimaryButtonText = "OK";
+                _ = dialog.ShowAsync();
+                return;
+            }
+            if (DropCheckBox.IsChecked == true && (string.IsNullOrWhiteSpace(FileNameTextBox.Text) || string.IsNullOrWhiteSpace(DropDirectoryTextBox.Text)))
+            {
+                ContentDialog dialog = new()
+                {
+                    Title = "Invalid Drop Settings",
+                    Content = "Please enter a valid file name and drop directory or uncheck the drop option.",
+                    XamlRoot = XamlRoot,
+                };
+                dialog.PrimaryButtonText = "OK";
+                _ = dialog.ShowAsync();
+                return;
+            }
+            string goPath;
+            if (System.IO.File.Exists(System.IO.Path.Combine(GetPackagedLocalPath(), "go", "bin", "go.exe")))
+            {
+                goPath = System.IO.Path.Combine(GetPackagedLocalPath(), "go", "bin", "go.exe");
+            }
+            else            
+            {
+                goPath = "go";
+            }
+            
+        }
+
+        private static string GetPackagedLocalPath()
+        {
+            return System.IO.Path.Combine(ApplicationData.Current.LocalCacheFolder.Path, "Local", "KryakApp");
+        }
+
+        private async Task<bool> InstallGoWithProgressAsync()
+        {
+            TextBlock statusText = new()
+            {
+                Text = "Downloading Go compiler...",
+                TextWrapping = TextWrapping.WrapWholeWords
+            };
+
+            ProgressBar progressBar = new()
+            {
+                IsIndeterminate = true,
+                Height = 6
+            };
+
+            ContentDialog progressDialog = new()
+            {
+                Title = "Installing Go",
+                XamlRoot = XamlRoot,
+                IsPrimaryButtonEnabled = false,
+                IsSecondaryButtonEnabled = false,
+                CloseButtonText = string.Empty,
+                Content = new StackPanel
+                {
+                    Spacing = 12,
+                    Children =
+                    {
+                        statusText,
+                        progressBar
+                    }
+                }
+            };
+
+            _ = progressDialog.ShowAsync();
+            await Task.Delay(50);
+
+            string tempPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "go1.26.3.windows-amd64.zip");
+            string extractPath = GetPackagedLocalPath();
+
+            try
+            {
+                using System.Net.Http.HttpClient client = new();
+                byte[] data = await client.GetByteArrayAsync("https://go.dev/dl/go1.26.3.windows-amd64.zip");
+                await System.IO.File.WriteAllBytesAsync(tempPath, data);
+
+                statusText.Text = "Extracting files...";
+
+                if (System.IO.Directory.Exists(extractPath))
+                {
+                    System.IO.Directory.Delete(extractPath, recursive: true);
+                }
+
+                System.IO.Directory.CreateDirectory(extractPath);
+                System.IO.Compression.ZipFile.ExtractToDirectory(tempPath, extractPath);
+                System.IO.File.Delete(tempPath);
+                return true;
+            }
+            catch
+            {
+                await ShowSimpleDialogAsync(
+                    "Installation Failed",
+                    "Failed to install Go compiler automatically. Please check internet connection and disk access, then try again.");
+                return false;
+            }
+            finally
+            {
+                progressDialog.Hide();
+            }
+        }
+
+        private async Task ShowSimpleDialogAsync(string title, string content)
+        {
+            ContentDialog dialog = new()
+            {
+                Title = title,
+                Content = content,
+                XamlRoot = XamlRoot,
+                PrimaryButtonText = "OK"
+            };
+
+            await dialog.ShowAsync();
         }
     }
 }
