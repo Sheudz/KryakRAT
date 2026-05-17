@@ -386,6 +386,7 @@ namespace KryakApp.Controls
             {
                 MinWidth = GetTotalWidth(),
                 Padding = new Thickness(0),
+                Background = new SolidColorBrush(global::Windows.UI.Color.FromArgb(0, 255, 255, 255)),
                 BorderBrush = (Brush)Application.Current.Resources["DividerStrokeColorDefaultBrush"],
                 BorderThickness = new Thickness(0, 0, 0, 1)
             };
@@ -413,7 +414,8 @@ namespace KryakApp.Controls
 
                 var cell = new Border
                 {
-                    Padding = new Thickness(12, 8, 8, 8)
+                    Padding = new Thickness(12, 8, 8, 8),
+                    Background = new SolidColorBrush(global::Windows.UI.Color.FromArgb(0, 255, 255, 255))
                 };
 
                 var text = new TextBlock

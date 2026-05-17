@@ -209,7 +209,7 @@
                                      IsEnabled="False"
                                      Height="32"
                                      VerticalAlignment="Center"
-                                     PlaceholderText="C:\\Icons\\client.ico"/>
+                                     PlaceholderText="C:\Icons\icon.ico"/>
 
                             <Button x:Name="BrowseIconButton"
                                     Grid.Column="2"

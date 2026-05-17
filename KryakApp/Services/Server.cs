@@ -38,6 +38,36 @@ public sealed class Server
     public bool IsRunning { get; private set; }
     public string CurrentCertificateFingerprint { get; private set; } = string.Empty;
 
+    public async Task<bool> SendClientCommandAsync(UserData user, string command, CancellationToken token = default)
+    {
+        if (user.Client is null || string.IsNullOrWhiteSpace(command))
+        {
+            return false;
+        }
+
+        try
+        {
+            ClientMessage control = new()
+            {
+                Channel = ChannelNames.Control,
+                Type = MessageTypes.Command,
+                Command = command
+            };
+
+            QuicStream outbound = await user.Client.OpenOutboundStreamAsync(QuicStreamType.Unidirectional, token);
+            await using (outbound)
+            {
+                await WriteFrameAsync(outbound, control, token);
+            }
+
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     public async Task StartServer(int port, string certificatePath, string certificatePassword)
     {
         if (IsRunning)
@@ -228,6 +258,7 @@ public sealed class Server
                                     }
 
                                     setUser(user);
+                                    user.Client = connection;
                                     _sessions[connection] = new ClientSession(connection, user);
                                     UserConnected?.Invoke(user);
                                 }
@@ -343,6 +374,7 @@ public sealed class Server
     {
         public const string Main = "main";
         public const string Ping = "ping";
+        public const string Control = "control";
     }
 
     private static class MessageTypes
@@ -350,6 +382,7 @@ public sealed class Server
         public const string Hello = "hello";
         public const string PingRequest = "ping_request";
         public const string Pong = "pong";
+        public const string Command = "command";
     }
 
     private sealed class ClientMessage
@@ -359,6 +392,7 @@ public sealed class Server
         public UserData? User { get; set; }
         public string? Ping { get; set; }
         public string? PingId { get; set; }
+        public string? Command { get; set; }
     }
 
     private sealed class ClientSession

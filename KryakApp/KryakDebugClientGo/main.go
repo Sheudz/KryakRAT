@@ -21,12 +21,14 @@ const (
 	defaultHost = "127.0.0.1"
 	defaultPort = 5555
 
-	channelMain = "main"
-	channelPing = "ping"
+	channelMain    = "main"
+	channelPing    = "ping"
+	channelControl = "control"
 
 	typeHello       = "hello"
 	typePingRequest = "ping_request"
 	typePong        = "pong"
+	typeCommand     = "command"
 )
 
 type UserPayload struct {
@@ -46,6 +48,7 @@ type Message struct {
 	Type    string       `json:"Type"`
 	User    *UserPayload `json:"User,omitempty"`
 	PingID  string       `json:"PingId,omitempty"`
+	Command string       `json:"Command,omitempty"`
 }
 
 func main() {
@@ -158,6 +161,16 @@ func handleInboundStream(ctx context.Context, stream *quic.ReceiveStream, writer
 				return err
 			}
 			fmt.Println("Pong sent")
+		}
+
+		if msg.Channel == channelControl && msg.Type == typeCommand {
+			fmt.Printf("Command received: %s\n", msg.Command)
+			switch msg.Command {
+			case "close_client", "delete_client":
+				return nil
+			case "restart_client":
+				fmt.Println("Restart requested (debug client keeps running).")
+			}
 		}
 
 		select {

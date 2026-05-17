@@ -12,6 +12,7 @@ namespace KryakApp.Pages
     public sealed partial class NodesPage : Page
     {
         private readonly List<Window> _openedWindows = [];
+        private readonly Dictionary<UserData, List<Window>> _userWindows = [];
 
         public NodesPage()
         {
@@ -19,6 +20,15 @@ namespace KryakApp.Pages
 
             SetupGrid();
             SetupGridEvents();
+
+            if (App.MainWindow is not null)
+            {
+                App.MainWindow.Closed += MainWindow_Closed;
+            }
+
+            App.Server.UserDisconnected += Server_UserDisconnected;
+
+            Unloaded += NodesPage_Unloaded;
         }
 
         private void SetupGrid()
@@ -88,18 +98,18 @@ namespace KryakApp.Pages
             };
             RunFileItem.Click += (_, _) => RunFile(row);
 
-            MenuFlyoutItem ServerItem = new()
+            MenuFlyoutItem ControlItem = new()
             {
-                Text = "Server",
+                Text = "Control",
                 Icon = new SymbolIcon(Symbol.World)
             };
-            ServerItem.Click += (_, _) => Server(row);
+            ControlItem.Click += (_, _) => Control(row);
 
             menu.Items.Add(ManagerItem);
             menu.Items.Add(RemoteDesktopItem);
             menu.Items.Add(RemoteConsoleItem);
             menu.Items.Add(RunFileItem);
-            menu.Items.Add(ServerItem);
+            menu.Items.Add(ControlItem);
 
             return menu;
         }
@@ -120,11 +130,19 @@ namespace KryakApp.Pages
         {
 
         }
-        private void Server(UserData user)
+        private void Control(UserData user)
         {
-            ClientServerWindow window = new(user);
+            ClientControlWindow window = new(user);
             window.Closed += ChildWindow_Closed;
             _openedWindows.Add(window);
+
+            if (!_userWindows.TryGetValue(user, out List<Window>? windows))
+            {
+                windows = [];
+                _userWindows[user] = windows;
+            }
+
+            windows.Add(window);
             window.Activate();
         }
 
@@ -133,7 +151,67 @@ namespace KryakApp.Pages
             if (sender is Window window)
             {
                 _openedWindows.Remove(window);
+
+                List<UserData> emptyUsers = [];
+                foreach (KeyValuePair<UserData, List<Window>> pair in _userWindows)
+                {
+                    pair.Value.Remove(window);
+                    if (pair.Value.Count == 0)
+                    {
+                        emptyUsers.Add(pair.Key);
+                    }
+                }
+
+                foreach (UserData user in emptyUsers)
+                {
+                    _userWindows.Remove(user);
+                }
             }
+        }
+
+        private void Server_UserDisconnected(UserData user)
+        {
+            if (!DispatcherQueue.HasThreadAccess)
+            {
+                DispatcherQueue.TryEnqueue(() => Server_UserDisconnected(user));
+                return;
+            }
+
+            if (!_userWindows.TryGetValue(user, out List<Window>? windows))
+            {
+                return;
+            }
+
+            List<Window> snapshot = [.. windows];
+            foreach (Window window in snapshot)
+            {
+                window.Close();
+            }
+
+            _userWindows.Remove(user);
+        }
+
+        private void MainWindow_Closed(object sender, WindowEventArgs args)
+        {
+            for (int i = _openedWindows.Count - 1; i >= 0; i--)
+            {
+                _openedWindows[i].Close();
+            }
+
+            _openedWindows.Clear();
+            _userWindows.Clear();
+        }
+
+        private void NodesPage_Unloaded(object sender, RoutedEventArgs e)
+        {
+            if (App.MainWindow is not null)
+            {
+                App.MainWindow.Closed -= MainWindow_Closed;
+            }
+
+            App.Server.UserDisconnected -= Server_UserDisconnected;
+
+            Unloaded -= NodesPage_Unloaded;
         }
     }
 }
