@@ -33,8 +33,10 @@ public sealed class Server
     public event Action<UserData>? UserConnected;
     public event Action<UserData, string>? UserPingUpdated;
     public event Action<UserData>? UserDisconnected;
+    public event Action<bool>? ServerStateChanged;
 
     public bool IsRunning { get; private set; }
+    public string CurrentCertificateFingerprint { get; private set; } = string.Empty;
 
     public async Task StartServer(int port, string certificatePath, string certificatePassword)
     {
@@ -74,6 +76,8 @@ public sealed class Server
         _listener = await QuicListener.ListenAsync(options, _cts.Token);
 
         IsRunning = true;
+        CurrentCertificateFingerprint = certificate.Thumbprint ?? string.Empty;
+        ServerStateChanged?.Invoke(true);
 
         _listenerTask = ListenerLoop(_cts.Token);
         _pingTask = PingLoop(_cts.Token);
@@ -85,6 +89,8 @@ public sealed class Server
             return;
 
         IsRunning = false;
+        CurrentCertificateFingerprint = string.Empty;
+        ServerStateChanged?.Invoke(false);
 
         _cts?.Cancel();
 

@@ -18,9 +18,11 @@ public sealed partial class ServerPage : Page
 {
     private DispatcherTimer _uptimeTimer = new();
     private DateTime _startTime;
+
     public ServerPage()
     {
         InitializeComponent();
+        LoadSavedServerSettings();
     }
 
     private async void StartServerButton_Click(object sender, RoutedEventArgs e)
@@ -69,6 +71,13 @@ public sealed partial class ServerPage : Page
             _uptimeTimer.Tick += UptimeTimer_Tick;
             _uptimeTimer.Start();
             SetServerOnline(port);
+
+            ServerLaunchConfigStore.Save(new ServerLaunchSettings
+            {
+                Port = port,
+                CertificatePath = certificatePath,
+                CertificatePassword = certificatePassword
+            });
         }
         catch (Exception ex)
         {
@@ -179,5 +188,28 @@ public sealed partial class ServerPage : Page
         };
 
         await dialog.ShowAsync();
+    }
+
+    private void LoadSavedServerSettings()
+    {
+        if (!ServerLaunchConfigStore.TryLoad(out ServerLaunchSettings settings))
+        {
+            return;
+        }
+
+        if (settings.Port is >= 1 and <= 65535)
+        {
+            PortNumberBox.Value = settings.Port;
+        }
+
+        if (!string.IsNullOrWhiteSpace(settings.CertificatePath))
+        {
+            CertificatePathTextBox.Text = settings.CertificatePath;
+        }
+
+        if (!string.IsNullOrWhiteSpace(settings.CertificatePassword))
+        {
+            CertificatePasswordBox.Password = settings.CertificatePassword;
+        }
     }
 }

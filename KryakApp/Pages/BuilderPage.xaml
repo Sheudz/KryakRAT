@@ -3,12 +3,235 @@
     x:Class="KryakApp.Pages.BuilderPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:local="using:KryakApp.Pages"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    mc:Ignorable="d" NavigationCacheMode="Enabled">
+    mc:Ignorable="d"
+    NavigationCacheMode="Enabled">
 
     <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
 
+        <ScrollViewer Grid.Row="0">
+            <StackPanel Padding="22" Spacing="18">
+                <StackPanel MaxWidth="1000" HorizontalAlignment="Stretch" Spacing="18">
+                <TextBlock Text="Build"
+                           FontSize="28"
+                           FontWeight="SemiBold"
+                           Margin="0,0,0,6"/>
+
+                <TextBlock Text="Connection" FontWeight="SemiBold"/>
+                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        CornerRadius="4"
+                        Padding="16">
+                    <Grid ColumnSpacing="16" RowSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0" Spacing="10">
+                            <TextBlock Text="Connection endpoints" Opacity="0.85"/>
+                            <Border BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="8"
+                                    Padding="4"
+                                    MinHeight="184">
+                                <ListView x:Name="ConnectionListView"
+                                          SelectionMode="None"
+                                          IsItemClickEnabled="False"
+                                          MaxHeight="276"
+                                          ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                    <ListView.ItemContainerStyle>
+                                        <Style TargetType="ListViewItem">
+                                            <Setter Property="Padding" Value="0"/>
+                                            <Setter Property="Margin" Value="0,0,0,3"/>
+                                            <Setter Property="MinHeight" Value="40"/>
+                                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                        </Style>
+                                    </ListView.ItemContainerStyle>
+                                    <ListView.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Background="{ThemeResource LayerFillColorAltBrush}"
+                                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                                    BorderThickness="1"
+                                                    CornerRadius="6"
+                                                    Padding="8,6">
+                                                <Grid ColumnSpacing="8">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+
+                                                    <TextBlock Text="{Binding}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+
+                                                    <Button Grid.Column="1"
+                                                            Tag="{Binding}"
+                                                            Click="RemoveConnectionButton_Click"
+                                                            MinWidth="30"
+                                                            Padding="6,0"
+                                                            Background="Transparent"
+                                                            BorderThickness="0"
+                                                            ToolTipService.ToolTip="Remove endpoint"
+                                                            VerticalAlignment="Center">
+                                                        <FontIcon Glyph="&#xE74D;"/>
+                                                    </Button>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ListView.ItemTemplate>
+                                </ListView>
+                            </Border>
+                            <TextBlock x:Name="ConnectionCountText"
+                                       Text="No endpoints added"
+                                       Opacity="0.65"
+                                       FontSize="12"/>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="1" Spacing="10">
+                            <TextBlock Text="Add endpoint" Opacity="0.85"/>
+
+                            <StackPanel Orientation="Horizontal" Spacing="18">
+                                <RadioButton x:Name="IpPortModeRadio"
+                                             Content="IP + Port"
+                                             IsChecked="True"
+                                             Checked="ConnectionModeRadio_Checked"/>
+                                <RadioButton x:Name="RawModeRadio"
+                                             Content="Raw URL"
+                                             Checked="ConnectionModeRadio_Checked"/>
+                            </StackPanel>
+
+                            <StackPanel x:Name="IpPortInputPanel" Spacing="10">
+                                <Grid ColumnSpacing="10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="120"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBox x:Name="IpTextBox"
+                                             PlaceholderText="127.0.0.1"/>
+                                    <TextBox x:Name="PortTextBox"
+                                             Grid.Column="1"
+                                             PlaceholderText="5555"/>
+                                </Grid>
+                            </StackPanel>
+
+                            <StackPanel x:Name="RawInputPanel" Spacing="10" Visibility="Collapsed">
+                                <TextBox x:Name="RawUrlTextBox" PlaceholderText="https://example.com/config/raw"/>
+                            </StackPanel>
+
+                            <Button Content="Add endpoint"
+                                    HorizontalAlignment="Right"
+                                    MinWidth="118"
+                                    Style="{StaticResource AccentButtonStyle}"
+                                    Click="AddConnectionButton_Click"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <TextBlock Text="Security Mode" FontWeight="SemiBold"/>
+                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        CornerRadius="4"
+                        Padding="16">
+                    <StackPanel Spacing="10">
+                        <TextBlock Text="Select transport verification policy" Opacity="0.85"/>
+                        <StackPanel Orientation="Horizontal" Spacing="22">
+                            <RadioButton x:Name="StrictModeRadio" Content="Strict"/>
+                            <RadioButton x:Name="PinnedModeRadio" Content="Pinned" Checked="PinnedModeRadio_Checked" Unchecked="PinnedModeRadio_Unchecked"/>
+                            <RadioButton x:Name="InsecureModeRadio" Content="Insecure" IsChecked="True"/>
+                        </StackPanel>
+
+                        <StackPanel x:Name="PinnedOptionsPanel" Spacing="8" Visibility="Collapsed">
+                            <TextBlock Text="Certificate fingerprint" Opacity="0.85"/>
+                            <Grid ColumnSpacing="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <TextBox x:Name="FingerprintTextBox"
+                                         PlaceholderText="ABCD1234..."/>
+
+                                <Button x:Name="TrustCurrentCertificateButton"
+                                        Grid.Column="1"
+                                        Content="Trust current certificate"
+                                        IsEnabled="False"
+                                        Click="TrustCurrentCertificateButton_Click"/>
+                            </Grid>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <TextBlock Text="Build Options" FontWeight="SemiBold"/>
+                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        CornerRadius="4"
+                        Padding="16">
+                    <StackPanel Spacing="12">
+                        <CheckBox x:Name="DropCheckBox"
+                                  Content="Drop"
+                                  IsChecked="False"
+                                  Checked="DropCheckBox_Checked"
+                                  Unchecked="DropCheckBox_Unchecked"/>
+
+                        <StackPanel Spacing="6">
+                            <TextBlock Text="File Name" Opacity="0.85"/>
+                            <TextBox x:Name="FileNameTextBox"
+                                     Text="client.exe"
+                                     PlaceholderText="client.exe"
+                                     IsEnabled="False"/>
+                        </StackPanel>
+
+                        <StackPanel Spacing="6">
+                            <TextBlock Text="Drop Directory" Opacity="0.85"/>
+                            <TextBox x:Name="DropDirectoryTextBox"
+                                     PlaceholderText="%TEMP%"
+                                     Text="%TEMP%"
+                                     IsEnabled="False"/>
+                        </StackPanel>
+
+                        <Grid ColumnSpacing="12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="170"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <CheckBox x:Name="CustomIconCheckBox"
+                                      Content="Custom Icon"
+                                      VerticalAlignment="Center"
+                                      Checked="CustomIconCheckBox_Checked"
+                                      Unchecked="CustomIconCheckBox_Unchecked"/>
+
+                            <TextBox x:Name="IconPathTextBox"
+                                     Grid.Column="1"
+                                     IsEnabled="False"
+                                     Height="32"
+                                     VerticalAlignment="Center"
+                                     PlaceholderText="C:\\Icons\\client.ico"/>
+
+                            <Button x:Name="BrowseIconButton"
+                                    Grid.Column="2"
+                                    IsEnabled="False"
+                                    MinWidth="32"
+                                    MinHeight="32"
+                                    Click="BrowseIconButton_Click">
+                                <FontIcon Glyph="&#xE8E5;" FontSize="16"/>
+                            </Button>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
+
+        <Grid Grid.Row="1" Padding="22,8,22,22">
+            <Button x:Name="BuildButton"
+                    Content="Build"
+                    HorizontalAlignment="Right"
+                    MinWidth="120"
+                    Style="{StaticResource AccentButtonStyle}"/>
+        </Grid>
     </Grid>
 </Page>

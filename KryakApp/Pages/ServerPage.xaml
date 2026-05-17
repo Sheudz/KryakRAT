@@ -141,9 +141,8 @@
                             <Button x:Name="BrowseCertificateButton"
                                     Grid.Column="3"
                                     Click="BrowseCertificateButton_Click"
-                                    MinWidth="42"
-                                    MinHeight="42"
-                                    Padding="8,0"
+                                    MinWidth="32"
+                                    MinHeight="32"
                                     VerticalAlignment="Center">
                                 <FontIcon Glyph="&#xE8E5;" FontSize="16"/>
                             </Button>
