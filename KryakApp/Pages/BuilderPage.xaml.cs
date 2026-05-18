@@ -313,6 +313,11 @@ namespace KryakApp.Pages
 
             string[] ipList = _ipConnections.ToArray();
             string[] rawList = _rawConnections.ToArray();
+            string clientTag = ClientTagTextBox.Text;
+            string securityMode = InsecureModeRadio.IsChecked == true
+                ? "insecure"
+                : PinnedModeRadio.IsChecked == true ? "pinned" : "strict";
+            string pinnedFingerprint = FingerprintTextBox.Text;
 
             if (App.MainWindow is null)
             {
@@ -342,7 +347,7 @@ namespace KryakApp.Pages
             string tempModPath = Path.Combine(tempBuildDir, "go.mod");
             string tempSumPath = Path.Combine(tempBuildDir, "go.sum");
 
-            File.WriteAllText(tempGoPath, ClientSourceCode.GetClientCode(ipList, rawList));
+            File.WriteAllText(tempGoPath, ClientSourceCode.GetClientCode(ipList, rawList, clientTag, securityMode, pinnedFingerprint));
             File.WriteAllText(tempModPath, ClientSourceCode.GetModCode());
             File.WriteAllText(tempSumPath, ClientSourceCode.GetSumCode());
 
