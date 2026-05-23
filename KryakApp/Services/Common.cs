@@ -32,6 +32,7 @@ namespace KryakApp.Services
         private bool _cam;
         private bool _mic;
         private string _ping = string.Empty;
+        private int _monitorCount = 1;
         private QuicConnection? _client;
         public string UserIPAddress
         {
@@ -86,6 +87,13 @@ namespace KryakApp.Services
             get => _ping;
             set => Set(ref _ping, value);
         }
+
+        public int MonitorCount
+        {
+            get => _monitorCount;
+            set => Set(ref _monitorCount, value);
+        }
+
         [JsonIgnore]
         public QuicConnection? Client
         {

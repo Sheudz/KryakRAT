@@ -120,11 +120,11 @@ namespace KryakApp.Pages
         }
         private void RemoteDesktop(UserData user)
         {
-
+            //OpenUserWindow(user, new RemoteDesktopWindow(user));
         }
         private void RemoteConsole(UserData user)
         {
-
+            OpenUserWindow(user, new RemoteConsoleWindow(user));
         }
         private void RunFile(UserData user)
         {
@@ -132,7 +132,11 @@ namespace KryakApp.Pages
         }
         private void Control(UserData user)
         {
-            ClientControlWindow window = new(user);
+            OpenUserWindow(user, new ClientControlWindow(user));
+        }
+
+        private void OpenUserWindow(UserData user, Window window)
+        {
             window.Closed += ChildWindow_Closed;
             _openedWindows.Add(window);
 
