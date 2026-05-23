@@ -33,6 +33,7 @@ public sealed class Server
     public event Action<UserData>? UserConnected;
     public event Action<UserData, string>? UserPingUpdated;
     public event Action<UserData>? UserDisconnected;
+    public event Action<UserData, string>? ConsoleOutputReceived;
     public event Action<bool>? ServerStateChanged;
 
     public bool IsRunning { get; private set; }
@@ -284,6 +285,18 @@ public sealed class Server
 
                         continue;
                     }
+
+                    if (string.Equals(message.Channel, ChannelNames.Control, StringComparison.OrdinalIgnoreCase)
+                        && string.Equals(message.Type, MessageTypes.ConsoleOutput, StringComparison.OrdinalIgnoreCase))
+                    {
+                        UserData? user = getUser();
+                        if (user != null && !string.IsNullOrWhiteSpace(message.ConsoleOutput))
+                        {
+                            ConsoleOutputReceived?.Invoke(user, message.ConsoleOutput);
+                        }
+
+                        continue;
+                    }
                 }
             }
         }
@@ -383,6 +396,7 @@ public sealed class Server
         public const string PingRequest = "ping_request";
         public const string Pong = "pong";
         public const string Command = "command";
+        public const string ConsoleOutput = "console_output";
     }
 
     private sealed class ClientMessage
@@ -393,6 +407,7 @@ public sealed class Server
         public string? Ping { get; set; }
         public string? PingId { get; set; }
         public string? Command { get; set; }
+        public string? ConsoleOutput { get; set; }
     }
 
     private sealed class ClientSession

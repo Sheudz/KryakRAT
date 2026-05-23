@@ -308,7 +308,7 @@ namespace KryakApp.Pages
             {
                 goPath = Path.Combine(GetPackagedLocalPath(), "go", "bin", "go.exe");
             }
-            else            
+            else
             {
                 goPath = "go";
             }

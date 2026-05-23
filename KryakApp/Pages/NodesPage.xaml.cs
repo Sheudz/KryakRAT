@@ -116,11 +116,11 @@ namespace KryakApp.Pages
 
         private void Manager(UserData user)
         {
-            
+
         }
         private void RemoteDesktop(UserData user)
         {
-            //OpenUserWindow(user, new RemoteDesktopWindow(user));
+            OpenUserWindow(user, new RemoteDesktopWindow(user));
         }
         private void RemoteConsole(UserData user)
         {
