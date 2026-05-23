@@ -2,7 +2,10 @@ using KryakApp.Services;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media.Imaging;
 using System;
+using System.IO;
+using System.Threading.Tasks;
 using WinRT.Interop;
 
 namespace KryakApp.Windows;
@@ -11,6 +14,7 @@ public sealed partial class RemoteDesktopWindow : Window
 {
     private readonly UserData _user;
     private bool _isStreaming;
+    private bool _suppressEvents;
 
     public RemoteDesktopWindow(UserData user)
     {
@@ -18,6 +22,7 @@ public sealed partial class RemoteDesktopWindow : Window
         _user = user;
 
         _isStreaming = false;
+        _suppressEvents = true;
 
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(WindowTitleBar);
@@ -30,14 +35,49 @@ public sealed partial class RemoteDesktopWindow : Window
         Title = $"Remote Desktop - {_user.Username}";
         PopulateMonitors();
 
+        _suppressEvents = false;
+
         _user.PropertyChanged += User_PropertyChanged;
+        App.Server.DesktopFrameReceived += Server_DesktopFrameReceived;
         Closed += RemoteDesktopWindow_Closed;
     }
 
     private void RemoteDesktopWindow_Closed(object sender, WindowEventArgs args)
     {
+        App.Server.DesktopFrameReceived -= Server_DesktopFrameReceived;
         _user.PropertyChanged -= User_PropertyChanged;
         Closed -= RemoteDesktopWindow_Closed;
+    }
+
+    private void Server_DesktopFrameReceived(UserData user, int monitor, int quality, string frameData)
+    {
+        if (!ReferenceEquals(user, _user))
+        {
+            return;
+        }
+
+        if (!DispatcherQueue.HasThreadAccess)
+        {
+            DispatcherQueue.TryEnqueue(() => SetDesktopFrame(frameData));
+            return;
+        }
+
+        SetDesktopFrame(frameData);
+    }
+
+    private void SetDesktopFrame(string base64Data)
+    {
+        try
+        {
+            byte[] bytes = Convert.FromBase64String(base64Data);
+            using MemoryStream ms = new(bytes);
+            BitmapImage bitmap = new();
+            bitmap.SetSource(ms.AsRandomAccessStream());
+            DesktopImage.Source = bitmap;
+        }
+        catch
+        {
+        }
     }
 
     private void User_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -58,6 +98,8 @@ public sealed partial class RemoteDesktopWindow : Window
 
     private void PopulateMonitors()
     {
+        _suppressEvents = true;
+
         MonitorCombo.Items.Clear();
         int count = Math.Max(1, _user.MonitorCount);
         for (int i = 1; i <= count; i++)
@@ -73,14 +115,62 @@ public sealed partial class RemoteDesktopWindow : Window
         {
             MonitorCombo.SelectedIndex = 0;
         }
+
+        _suppressEvents = false;
     }
 
     private void MonitorCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
+        if (_suppressEvents)
+        {
+            return;
+        }
+
+        if (_isStreaming)
+        {
+            RestartStreamWithCurrentSettings();
+        }
     }
 
     private void QualityCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
+        if (_suppressEvents)
+        {
+            return;
+        }
+
+        if (_isStreaming)
+        {
+            RestartStreamWithCurrentSettings();
+        }
+    }
+
+    private int GetSelectedMonitor()
+    {
+        if (MonitorCombo.SelectedItem is ComboBoxItem monitorItem && monitorItem.Tag is int mi)
+        {
+            return mi;
+        }
+
+        return 0;
+    }
+
+    private int GetSelectedQuality()
+    {
+        if (QualityCombo.SelectedItem is ComboBoxItem qualityItem && qualityItem.Tag is string tagStr && int.TryParse(tagStr, out int qi))
+        {
+            return qi;
+        }
+
+        return 50;
+    }
+
+    private async void RestartStreamWithCurrentSettings()
+    {
+        int monitorIndex = GetSelectedMonitor();
+        int quality = GetSelectedQuality();
+        string command = $"remote_desktop:start:{monitorIndex}:{quality}";
+        await App.Server.SendClientCommandAsync(_user, command);
     }
 
     private async void StartButton_Click(object sender, RoutedEventArgs e)
@@ -99,7 +189,10 @@ public sealed partial class RemoteDesktopWindow : Window
         }
         else
         {
-            bool sent = await App.Server.SendClientCommandAsync(_user, "remote_desktop:start");
+            int monitorIndex = GetSelectedMonitor();
+            int quality = GetSelectedQuality();
+            string command = $"remote_desktop:start:{monitorIndex}:{quality}";
+            bool sent = await App.Server.SendClientCommandAsync(_user, command);
             if (sent)
             {
                 _isStreaming = true;

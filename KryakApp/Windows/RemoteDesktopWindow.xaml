@@ -37,7 +37,7 @@
                     <ComboBoxItem Content="Very Low" Tag="10"/>
                     <ComboBoxItem Content="Low" Tag="25"/>
                     <ComboBoxItem Content="Medium" Tag="50"/>
-                    <ComboBoxItem Content="High" Tag="80"/>
+                    <ComboBoxItem Content="High" Tag="75"/>
                     <ComboBoxItem Content="Native" Tag="100"/>
                 </ComboBox>
                 <Button x:Name="StartButton"

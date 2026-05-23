@@ -16,7 +16,7 @@ namespace KryakApp.Services;
 
 public sealed class Server
 {
-    private const int MaxFrameSizeBytes = 64 * 1024;
+    private const int MaxFrameSizeBytes = 5 * 1024 * 1024;
     private const int MaxPendingPingsPerClient = 32;
     private static readonly TimeSpan PendingPingTimeout = TimeSpan.FromSeconds(30);
 
@@ -34,6 +34,7 @@ public sealed class Server
     public event Action<UserData, string>? UserPingUpdated;
     public event Action<UserData>? UserDisconnected;
     public event Action<UserData, string>? ConsoleOutputReceived;
+    public event Action<UserData, int, int, string>? DesktopFrameReceived;
     public event Action<bool>? ServerStateChanged;
 
     public bool IsRunning { get; private set; }
@@ -297,6 +298,18 @@ public sealed class Server
 
                         continue;
                     }
+
+                    if (string.Equals(message.Channel, ChannelNames.Desktop, StringComparison.OrdinalIgnoreCase)
+                        && string.Equals(message.Type, MessageTypes.DesktopFrame, StringComparison.OrdinalIgnoreCase))
+                    {
+                        UserData? user = getUser();
+                        if (user != null && message.DesktopFrame != null)
+                        {
+                            DesktopFrameReceived?.Invoke(user, message.DesktopMonitor, message.DesktopQuality, message.DesktopFrame);
+                        }
+
+                        continue;
+                    }
                 }
             }
         }
@@ -388,6 +401,7 @@ public sealed class Server
         public const string Main = "main";
         public const string Ping = "ping";
         public const string Control = "control";
+        public const string Desktop = "desktop";
     }
 
     private static class MessageTypes
@@ -397,6 +411,7 @@ public sealed class Server
         public const string Pong = "pong";
         public const string Command = "command";
         public const string ConsoleOutput = "console_output";
+        public const string DesktopFrame = "frame";
     }
 
     private sealed class ClientMessage
@@ -408,6 +423,9 @@ public sealed class Server
         public string? PingId { get; set; }
         public string? Command { get; set; }
         public string? ConsoleOutput { get; set; }
+        public string? DesktopFrame { get; set; }
+        public int DesktopMonitor { get; set; }
+        public int DesktopQuality { get; set; }
     }
 
     private sealed class ClientSession

