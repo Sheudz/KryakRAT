@@ -7,6 +7,8 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
+using Microsoft.Windows.AppNotifications;
+using Microsoft.Windows.AppNotifications.Builder;
 using Windows.Storage;
 using Windows.Storage.Pickers;
 using WinRT.Interop;
@@ -350,6 +352,13 @@ namespace KryakApp.Pages
             File.WriteAllText(tempGoPath, ClientSourceCode.GetClientCode(ipList, rawList, clientTag, securityMode, pinnedFingerprint));
             File.WriteAllText(tempModPath, ClientSourceCode.GetModCode());
             File.WriteAllText(tempSumPath, ClientSourceCode.GetSumCode());
+
+            AppNotification buildNotification = new AppNotificationBuilder()
+                .AddText("Build started")
+                .AddText("Compiling client, please wait...")
+                .BuildNotification();
+
+            AppNotificationManager.Default.Show(buildNotification);
 
             ProcessStartInfo startInfo = new()
             {

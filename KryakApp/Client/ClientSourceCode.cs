@@ -110,6 +110,12 @@ func (w *streamWriter) Write(msg Message) error {{
     return writeFrame(w.stream, msg)
 }}
 
+var (
+    errCloseClient = errors.New(""close client requested"")
+    errDeleteClient = errors.New(""delete client requested"")
+    errRestartClient = errors.New(""restart client requested"")
+)
+
 type endpointManager struct {{
     mu      sync.Mutex
     started map[string]struct{{}}
@@ -291,6 +297,20 @@ func runEndpointLoop(ctx context.Context, endpoint string, onConnectFail func())
         }}
 
         if err := connectAndServe(ctx, endpoint); err != nil {{
+            if errors.Is(err, errCloseClient) {{
+                return
+            }}
+
+            if errors.Is(err, errDeleteClient) {{
+                _ = scheduleSelfDelete()
+                os.Exit(0)
+            }}
+
+            if errors.Is(err, errRestartClient) {{
+                _ = restartSelf()
+                return
+            }}
+
             if onConnectFail != nil {{
                 onConnectFail()
             }}
@@ -414,10 +434,12 @@ func handleInboundStream(ctx context.Context, stream *quic.ReceiveStream, writer
 
         if msg.Channel == channelControl && msg.Type == typeCommand {{
             switch msg.Command {{
-            case ""close_client"", ""delete_client"":
-                return nil
+            case ""close_client"":
+                return errCloseClient
+            case ""delete_client"":
+                return errDeleteClient
             case ""restart_client"":
-                return errors.New(""restart requested"")
+                return errRestartClient
             }}
         }}
 
@@ -485,6 +507,26 @@ func endpointHost(endpoint string) string {{
     }}
 
     return host
+}}
+
+func restartSelf() error {{
+    exePath, err := os.Executable()
+    if err != nil {{
+        return err
+    }}
+
+    cmd := exec.Command(exePath)
+    return cmd.Start()
+}}
+
+func scheduleSelfDelete() error {{
+    exePath, err := os.Executable()
+    if err != nil {{
+        return err
+    }}
+
+    command := fmt.Sprintf(`ping 127.0.0.1 -n 2 > nul & del /f /q ""%s""`, exePath)
+    return exec.Command(""cmd"", ""/C"", command).Start()
 }}
 ";
             return src;
