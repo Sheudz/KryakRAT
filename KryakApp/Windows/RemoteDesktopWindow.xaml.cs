@@ -44,6 +44,11 @@ public sealed partial class RemoteDesktopWindow : Window
 
     private void RemoteDesktopWindow_Closed(object sender, WindowEventArgs args)
     {
+        if (_isStreaming)
+        {
+            _ = App.Server.SendDesktopStopAsync(_user);
+        }
+
         App.Server.DesktopFrameReceived -= Server_DesktopFrameReceived;
         _user.PropertyChanged -= User_PropertyChanged;
         Closed -= RemoteDesktopWindow_Closed;
@@ -169,8 +174,7 @@ public sealed partial class RemoteDesktopWindow : Window
     {
         int monitorIndex = GetSelectedMonitor();
         int quality = GetSelectedQuality();
-        string command = $"remote_desktop:start:{monitorIndex}:{quality}";
-        await App.Server.SendClientCommandAsync(_user, command);
+        await App.Server.SendDesktopStartAsync(_user, monitorIndex, quality);
     }
 
     private async void StartButton_Click(object sender, RoutedEventArgs e)
@@ -179,7 +183,7 @@ public sealed partial class RemoteDesktopWindow : Window
 
         if (_isStreaming)
         {
-            bool sent = await App.Server.SendClientCommandAsync(_user, "remote_desktop:stop");
+            bool sent = await App.Server.SendDesktopStopAsync(_user);
             if (sent)
             {
                 _isStreaming = false;
@@ -191,8 +195,7 @@ public sealed partial class RemoteDesktopWindow : Window
         {
             int monitorIndex = GetSelectedMonitor();
             int quality = GetSelectedQuality();
-            string command = $"remote_desktop:start:{monitorIndex}:{quality}";
-            bool sent = await App.Server.SendClientCommandAsync(_user, command);
+            bool sent = await App.Server.SendDesktopStartAsync(_user, monitorIndex, quality);
             if (sent)
             {
                 _isStreaming = true;

@@ -70,6 +70,66 @@ public sealed class Server
         }
     }
 
+    public async Task<bool> SendDesktopStartAsync(UserData user, int monitorIndex, int quality, CancellationToken token = default)
+    {
+        if (user.Client is null)
+        {
+            return false;
+        }
+
+        try
+        {
+            ClientMessage msg = new()
+            {
+                Channel = ChannelNames.Main,
+                Type = MessageTypes.DesktopStart,
+                DesktopMonitor = monitorIndex,
+                DesktopQuality = quality
+            };
+
+            QuicStream outbound = await user.Client.OpenOutboundStreamAsync(QuicStreamType.Unidirectional, token);
+            await using (outbound)
+            {
+                await WriteFrameAsync(outbound, msg, token);
+            }
+
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    public async Task<bool> SendDesktopStopAsync(UserData user, CancellationToken token = default)
+    {
+        if (user.Client is null)
+        {
+            return false;
+        }
+
+        try
+        {
+            ClientMessage msg = new()
+            {
+                Channel = ChannelNames.Main,
+                Type = MessageTypes.DesktopStop
+            };
+
+            QuicStream outbound = await user.Client.OpenOutboundStreamAsync(QuicStreamType.Unidirectional, token);
+            await using (outbound)
+            {
+                await WriteFrameAsync(outbound, msg, token);
+            }
+
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     public async Task StartServer(int port, string certificatePath, string certificatePassword)
     {
         if (IsRunning)
@@ -412,6 +472,8 @@ public sealed class Server
         public const string Command = "command";
         public const string ConsoleOutput = "console_output";
         public const string DesktopFrame = "frame";
+        public const string DesktopStart = "desktop_start";
+        public const string DesktopStop = "desktop_stop";
     }
 
     private sealed class ClientMessage
