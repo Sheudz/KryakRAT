@@ -224,6 +224,9 @@ namespace KryakApp.Pages
 
         private async void BuildButton_Click(object sender, RoutedEventArgs e)
         {
+            BuildButton.IsEnabled = false;
+            try
+            {
             bool? hasGo = null;
 
             try
@@ -390,6 +393,11 @@ namespace KryakApp.Pages
             }
 
             await ShowSimpleDialogAsync("Build Completed", $"Client executable saved to:\n{outputFile.Path}");
+            }
+            finally
+            {
+                BuildButton.IsEnabled = true;
+            }
         }
 
         private static string GetPackagedLocalPath()

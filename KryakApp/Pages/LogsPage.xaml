@@ -8,7 +8,22 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d" NavigationCacheMode="Enabled">
 
-    <Grid>
-
+    <Grid Padding="22">
+        <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                CornerRadius="8"
+                Padding="12">
+            <ScrollViewer x:Name="LogScrollViewer"
+                          VerticalScrollBarVisibility="Auto"
+                          VerticalScrollMode="Auto">
+                <TextBox x:Name="LogTextBox"
+                         IsReadOnly="True"
+                         TextWrapping="Wrap"
+                         AcceptsReturn="True"
+                         BorderThickness="0"
+                         Background="Transparent"/>
+            </ScrollViewer>
+        </Border>
     </Grid>
 </Page>

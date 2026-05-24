@@ -8,6 +8,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Buffers.Binary;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -37,8 +38,14 @@ public sealed class Server
     public event Action<UserData, int, int, string>? DesktopFrameReceived;
     public event Action<bool>? ServerStateChanged;
 
+    public int Port { get; private set; }
     public bool IsRunning { get; private set; }
     public string CurrentCertificateFingerprint { get; private set; } = string.Empty;
+
+    public IEnumerable<UserData> GetConnectedUsers()
+    {
+        return _sessions.Values.Select(s => s.User);
+    }
 
     public async Task<bool> SendClientCommandAsync(UserData user, string command, CancellationToken token = default)
     {
@@ -167,6 +174,7 @@ public sealed class Server
 
         _listener = await QuicListener.ListenAsync(options, _cts.Token);
 
+        Port = port;
         IsRunning = true;
         CurrentCertificateFingerprint = certificate.Thumbprint ?? string.Empty;
         ServerStateChanged?.Invoke(true);

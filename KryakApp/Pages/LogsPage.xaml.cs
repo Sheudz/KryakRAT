@@ -1,31 +1,42 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Controls.Primitives;
-using Microsoft.UI.Xaml.Data;
-using Microsoft.UI.Xaml.Input;
-using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Navigation;
 using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Runtime.InteropServices.WindowsRuntime;
-using Windows.Foundation;
-using Windows.Foundation.Collections;
+using System.Text;
 
-// To learn more about WinUI, the WinUI project structure,
-// and more about our project templates, see: http://aka.ms/winui-project-info.
+namespace KryakApp.Pages;
 
-namespace KryakApp.Pages
+public sealed partial class LogsPage : Page
 {
-    /// <summary>
-    /// An empty page that can be used on its own or navigated to within a Frame.
-    /// </summary>
-    public sealed partial class LogsPage : Page
+    private readonly StringBuilder _log = new();
+
+    public LogsPage()
     {
-        public LogsPage()
+        InitializeComponent();
+
+        LogTextBox.Text = App.GetLogText();
+        _log.Append(App.GetLogText());
+
+        App.Logged += OnLogged;
+    }
+
+    private void OnLogged(string entry)
+    {
+        if (!DispatcherQueue.HasThreadAccess)
         {
-            InitializeComponent();
+            _ = DispatcherQueue.TryEnqueue(() => OnLogged(entry));
+            return;
         }
+
+        _log.Append(entry);
+        _log.Append('\n');
+
+        const int maxChars = 50000;
+        if (_log.Length > maxChars)
+        {
+            _log.Remove(0, _log.Length - maxChars);
+        }
+
+        LogTextBox.Text = _log.ToString();
+        LogScrollViewer.ChangeView(null, LogScrollViewer.ScrollableHeight, null);
     }
 }
