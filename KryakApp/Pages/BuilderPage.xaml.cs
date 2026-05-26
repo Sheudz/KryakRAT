@@ -198,8 +198,6 @@ namespace KryakApp.Pages
             InitializeWithWindow.Initialize(picker, hwnd);
             picker.SuggestedStartLocation = PickerLocationId.ComputerFolder;
             picker.FileTypeFilter.Add(".ico");
-            picker.FileTypeFilter.Add(".png");
-            picker.FileTypeFilter.Add(".jpg");
 
             StorageFile? file = await picker.PickSingleFileAsync();
             if (file is null)
@@ -381,17 +379,26 @@ namespace KryakApp.Pages
                     WorkingDirectory = tempBuildDir
                 };
                 using Process? processIcon = Process.Start(iconInfo);
-                    if (processIcon is null)
-                    {
+                if (processIcon is null)
+                {
                         await ShowSimpleDialogAsync("Build Failed", "Failed to start rsrc process.");
                         return;
-                    }
                 }
 
-                ProcessStartInfo startInfo = new()
+                string iconOut = await processIcon.StandardOutput.ReadToEndAsync();
+                string iconErr = await processIcon.StandardError.ReadToEndAsync();
+                await processIcon.WaitForExitAsync();
+
+                if (processIcon.ExitCode != 0)
+                {
+                    await ShowSimpleDialogAsync("Build Failed", $"rsrc failed:\n{iconErr}\n{iconOut}");
+                    return;
+                }
+            }
+            ProcessStartInfo tidyInfo = new()
             {
                 FileName = goPath,
-                Arguments = $"build -ldflags=\"-s -w -H windowsgui\" -trimpath -o \"{outputFile.Path}\" \"{tempGoPath}\"",
+                Arguments = "mod tidy",
                 UseShellExecute = false,
                 CreateNoWindow = true,
                 RedirectStandardOutput = true,
@@ -399,7 +406,21 @@ namespace KryakApp.Pages
                 WorkingDirectory = tempBuildDir
             };
 
-            using Process? process = Process.Start(startInfo);
+            using Process? tidyProcess = Process.Start(tidyInfo);
+            await tidyProcess!.WaitForExitAsync();
+
+            ProcessStartInfo startInfo = new()
+            {
+                FileName = goPath,
+                Arguments = $"build -ldflags=\"-s -w -H windowsgui\" -trimpath -o \"{outputFile.Path}\" .",
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                WorkingDirectory = tempBuildDir
+            };
+
+                using Process? process = Process.Start(startInfo);
             if (process is null)
             {
                 await ShowSimpleDialogAsync("Build Failed", "Failed to start Go compiler process.");
