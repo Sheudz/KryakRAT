@@ -356,7 +356,7 @@ namespace KryakApp.Pages
             string tempGoPath = Path.Combine(tempBuildDir, "main.go");
             string tempModPath = Path.Combine(tempBuildDir, "go.mod");
             string tempSumPath = Path.Combine(tempBuildDir, "go.sum");
-
+            File.Delete(Path.Combine(tempBuildDir, "rsrc.syso"));
             File.WriteAllText(tempGoPath, ClientSourceCode.GetClientCode(ipList, rawList, clientTag, securityMode, pinnedFingerprint));
             File.WriteAllText(tempModPath, ClientSourceCode.GetModCode());
             File.WriteAllText(tempSumPath, ClientSourceCode.GetSumCode());
