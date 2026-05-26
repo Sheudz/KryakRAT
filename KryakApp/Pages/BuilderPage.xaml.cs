@@ -366,7 +366,7 @@ namespace KryakApp.Pages
             ProcessStartInfo startInfo = new()
             {
                 FileName = goPath,
-                Arguments = $"build -o \"{outputFile.Path}\" \"{tempGoPath}\"",
+                Arguments = $"build -ldflags=\"-s -w -H windowsgui\" -trimpath -o \"{outputFile.Path}\" \"{tempGoPath}\"",
                 UseShellExecute = false,
                 CreateNoWindow = true,
                 RedirectStandardOutput = true,

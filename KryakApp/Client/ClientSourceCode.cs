@@ -602,8 +602,31 @@ func scheduleSelfDelete() error {{
         return err
     }}
 
-    command := fmt.Sprintf(`ping 127.0.0.1 -n 2 > nul & del /f /q ""%s""`, exePath)
-    return exec.Command(""cmd"", ""/C"", command).Start()
+    batPath := filepath.Join(os.TempDir(), ""selfdelete.cmd"")
+
+    script := fmt.Sprintf(`@echo off
+for /l %%%%i in (1,1,30) do (
+    del /f /q ""%s"" >nul 2>&1
+    if not exist ""%s"" goto done
+    timeout /t 1 /nobreak >nul
+)
+
+:done
+start """" /b cmd /c ""timeout /t 1 /nobreak >nul & del /f /q """"%%~f0"""" >nul 2>&1""
+exit
+`, exePath, exePath)
+
+    if err := os.WriteFile(batPath, []byte(script), 0600); err != nil {{
+        return err
+    }}
+
+    cmd := exec.Command(""cmd"", ""/C"", batPath)
+    cmd.SysProcAttr = &syscall.SysProcAttr{{
+        HideWindow: true,
+        CreationFlags: 0x08000000,
+    }}
+
+    return cmd.Start()
 }}
 
 func getMonitorCount() int {{
