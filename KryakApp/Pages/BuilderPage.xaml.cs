@@ -373,13 +373,19 @@ namespace KryakApp.Pages
                 ProcessStartInfo iconInfo = new()
                 {
                     FileName = goPath.Replace("go.exe", "rsrc.exe"),
-                    Arguments = $"-ico {IconPathTextBox.Text.Trim()} -o {Path.Combine(tempBuildDir, "rsrc.syso")}",
+                    Arguments = $" -ico {IconPathTextBox.Text.Trim()} -o {Path.Combine(tempBuildDir, "rsrc.syso")}",
                     UseShellExecute = false,
                     CreateNoWindow = true,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     WorkingDirectory = tempBuildDir
                 };
+                using Process? processIcon = Process.Start(iconInfo);
+                    if (processIcon is null)
+                    {
+                        await ShowSimpleDialogAsync("Build Failed", "Failed to start rsrc process.");
+                        return;
+                    }
                 }
 
                 ProcessStartInfo startInfo = new()
