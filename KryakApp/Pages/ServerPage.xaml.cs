@@ -23,6 +23,13 @@ public sealed partial class ServerPage : Page
     {
         InitializeComponent();
         LoadSavedServerSettings();
+        UpdateUsersCount();
+        App.ConnectedUsers.Users.CollectionChanged += (_, _) => UpdateUsersCount();
+    }
+
+    private void UpdateUsersCount()
+    {
+        UsersText.Text = App.ConnectedUsers.Users.Count.ToString();
     }
 
     private async void StartServerButton_Click(object sender, RoutedEventArgs e)
