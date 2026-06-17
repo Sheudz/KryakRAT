@@ -45,6 +45,9 @@
                         MinWidth="90"
                         Style="{StaticResource AccentButtonStyle}"
                         Click="StartButton_Click"/>
+                <CheckBox x:Name="MouseControlCheckBox"
+                          Content="Mouse"
+                          IsChecked="False"/>
             </StackPanel>
 
             <Border Grid.Row="1"
@@ -57,7 +60,8 @@
                 <Image x:Name="DesktopImage"
                        Stretch="Uniform"
                        HorizontalAlignment="Center"
-                       VerticalAlignment="Center"/>
+                       VerticalAlignment="Center"
+                       PointerPressed="DesktopImage_PointerPressed"/>
             </Border>
         </Grid>
     </Grid>

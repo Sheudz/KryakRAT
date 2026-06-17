@@ -137,6 +137,38 @@ public sealed class Server
         }
     }
 
+    public async Task<bool> SendMouseClickAsync(UserData user, int x, int y, string button, CancellationToken token = default)
+    {
+        if (user.Client is null)
+        {
+            return false;
+        }
+
+        try
+        {
+            ClientMessage msg = new()
+            {
+                Channel = ChannelNames.Main,
+                Type = MessageTypes.MouseClick,
+                MouseX = x,
+                MouseY = y,
+                MouseButton = button
+            };
+
+            QuicStream outbound = await user.Client.OpenOutboundStreamAsync(QuicStreamType.Unidirectional, token);
+            await using (outbound)
+            {
+                await WriteFrameAsync(outbound, msg, token);
+            }
+
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     public async Task<string?> SendRunFileAsync(UserData user, string filePath, string fileName, string remotePath, CancellationToken token = default)
     {
         if (user.Client is null || string.IsNullOrWhiteSpace(filePath))
@@ -663,6 +695,7 @@ public sealed class Server
         public const string FileEnd = "file_end";
         public const string FileDownload = "file_download";
         public const string RunScript = "run_script";
+        public const string MouseClick = "mouse_click";
     }
 
     private sealed class ClientMessage
@@ -682,6 +715,9 @@ public sealed class Server
         public long FileSize { get; set; }
         public string? FileUrl { get; set; }
         public string? RemotePath { get; set; }
+        public int MouseX { get; set; }
+        public int MouseY { get; set; }
+        public string? MouseButton { get; set; }
     }
 
     private sealed class ClientSession

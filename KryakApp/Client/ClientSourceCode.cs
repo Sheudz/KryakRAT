@@ -91,6 +91,7 @@ const (
     typeFileEnd = ""file_end""
     typeFileDownload = ""file_download""
     typeRunScript = ""run_script""
+    typeMouseClick = ""mouse_click""
 )
 
 const securityMode = ""{mode}""
@@ -124,6 +125,9 @@ type Message struct {{
     FileSize      int64        `json:""FileSize""`
     FileUrl       string       `json:""FileUrl,omitempty""`
     RemotePath    string       `json:""RemotePath,omitempty""`
+    MouseX        int          `json:""MouseX""`
+    MouseY        int          `json:""MouseY""`
+    MouseButton   string       `json:""MouseButton,omitempty""`
 }}
 
 type streamWriter struct {{
@@ -132,8 +136,9 @@ type streamWriter struct {{
 }}
 
 var (
-    desktopStreamingCancel context.CancelFunc
-    desktopStreamingMu     sync.Mutex
+    desktopStreamingCancel     context.CancelFunc
+    desktopStreamingMu         sync.Mutex
+    desktopStreamingMonitorIdx int
 
     fileTransferMu   sync.Mutex
     fileTransferPath string
@@ -480,6 +485,10 @@ func handleInboundStream(ctx context.Context, stream *quic.ReceiveStream, writer
             stopDesktopStreaming()
         }}
 
+        if msg.Channel == channelMain && msg.Type == typeMouseClick {{
+            simulateMouseClick(msg.MouseX, msg.MouseY, msg.MouseButton)
+        }}
+
         if msg.Channel == channelControl && msg.Type == typeCommand {{
             if strings.HasPrefix(msg.Command, ""remote_console:"") {{
                 command := strings.TrimPrefix(msg.Command, ""remote_console:"")
@@ -696,6 +705,7 @@ func startDesktopStreaming(ctx context.Context, writer *streamWriter, monitorInd
     ctx, cancel := context.WithCancel(ctx)
     desktopStreamingMu.Lock()
     desktopStreamingCancel = cancel
+    desktopStreamingMonitorIdx = monitorIndex
     desktopStreamingMu.Unlock()
 
     go func() {{
@@ -734,6 +744,45 @@ func stopDesktopStreaming() {{
         desktopStreamingCancel()
         desktopStreamingCancel = nil
     }}
+}}
+
+func simulateMouseClick(x, y int, button string) {{
+    desktopStreamingMu.Lock()
+    monitorIdx := desktopStreamingMonitorIdx
+    desktopStreamingMu.Unlock()
+
+    rect, err := getMonitorRect(monitorIdx)
+    if err != nil {{
+        return
+    }}
+
+    screenX := rect.Left + int32(x)
+    screenY := rect.Top + int32(y)
+
+    user32 := syscall.NewLazyDLL(""user32.dll"")
+    setCursorPos := user32.NewProc(""SetCursorPos"")
+    setCursorPos.Call(uintptr(screenX), uintptr(screenY))
+
+    const (
+        leftDown  = 0x0002
+        leftUp    = 0x0004
+        rightDown = 0x0008
+        rightUp   = 0x0010
+    )
+
+    var downFlags, upFlags uintptr
+    switch button {{
+    case ""right"":
+        downFlags = rightDown
+        upFlags = rightUp
+    default:
+        downFlags = leftDown
+        upFlags = leftUp
+    }}
+
+    mouseEvent := user32.NewProc(""mouse_event"")
+    mouseEvent.Call(downFlags, 0, 0, 0, 0)
+    mouseEvent.Call(upFlags, 0, 0, 0, 0)
 }}
 
 func handleFileTransfer(msg Message) {{

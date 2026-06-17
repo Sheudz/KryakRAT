@@ -15,6 +15,8 @@ public sealed partial class RemoteDesktopWindow : Window
     private readonly UserData _user;
     private bool _isStreaming;
     private bool _suppressEvents;
+    private int _lastFrameWidth;
+    private int _lastFrameHeight;
 
     public RemoteDesktopWindow(UserData user)
     {
@@ -79,10 +81,46 @@ public sealed partial class RemoteDesktopWindow : Window
             BitmapImage bitmap = new();
             bitmap.SetSource(ms.AsRandomAccessStream());
             DesktopImage.Source = bitmap;
+            _lastFrameWidth = bitmap.PixelWidth;
+            _lastFrameHeight = bitmap.PixelHeight;
         }
         catch
         {
         }
+    }
+
+    private async void DesktopImage_PointerPressed(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+    {
+        if (!_isStreaming || MouseControlCheckBox.IsChecked != true)
+            return;
+
+        var point = e.GetCurrentPoint(DesktopImage);
+        double clickX = point.Position.X;
+        double clickY = point.Position.Y;
+
+        if (_lastFrameWidth <= 0 || _lastFrameHeight <= 0)
+            return;
+
+        double renderedWidth = DesktopImage.ActualWidth;
+        double renderedHeight = DesktopImage.ActualHeight;
+
+        double scaleX = renderedWidth / _lastFrameWidth;
+        double scaleY = renderedHeight / _lastFrameHeight;
+        double scale = Math.Min(scaleX, scaleY);
+
+        double contentWidth = _lastFrameWidth * scale;
+        double contentHeight = _lastFrameHeight * scale;
+        double offsetX = (renderedWidth - contentWidth) / 2;
+        double offsetY = (renderedHeight - contentHeight) / 2;
+
+        int imageX = (int)((clickX - offsetX) / scale);
+        int imageY = (int)((clickY - offsetY) / scale);
+
+        if (imageX < 0 || imageX >= _lastFrameWidth || imageY < 0 || imageY >= _lastFrameHeight)
+            return;
+
+        string button = point.Properties.IsRightButtonPressed ? "right" : "left";
+        await App.Server.SendMouseClickAsync(_user, imageX, imageY, button);
     }
 
     private void User_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
