@@ -699,30 +699,28 @@ func startDesktopStreaming(ctx context.Context, writer *streamWriter, monitorInd
     desktopStreamingMu.Unlock()
 
     go func() {{
-        ticker := time.NewTicker(200 * time.Millisecond)
-        defer ticker.Stop()
-
         for {{
             select {{
             case <-ctx.Done():
                 return
-            case <-ticker.C:
-                frame, err := captureDesktopFrame(monitorIndex, quality)
-                if err != nil {{
-                    continue
-                }}
+            default:
+            }}
 
-                msg := Message{{
-                    Channel:       channelDesktop,
-                    Type:          typeDesktopFrame,
-                    DesktopMonitor: monitorIndex,
-                    DesktopQuality: quality,
-                    DesktopFrame:   frame,
-                }}
+            frame, err := captureDesktopFrame(monitorIndex, quality)
+            if err != nil {{
+                continue
+            }}
 
-                if err := writer.Write(msg); err != nil {{
-                    return
-                }}
+            msg := Message{{
+                Channel:       channelDesktop,
+                Type:          typeDesktopFrame,
+                DesktopMonitor: monitorIndex,
+                DesktopQuality: quality,
+                DesktopFrame:   frame,
+            }}
+
+            if err := writer.Write(msg); err != nil {{
+                return
             }}
         }}
     }}()
