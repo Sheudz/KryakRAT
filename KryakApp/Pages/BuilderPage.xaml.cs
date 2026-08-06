@@ -339,7 +339,8 @@ namespace KryakApp.Pages
             string pinnedFingerprint = FingerprintTextBox.Text;
             int startupMode =
             NoStartupRadio.IsChecked == true ? 0 :
-            FolderStartupRadio.IsChecked == true ? 1 : 2;
+            FolderStartupRadio.IsChecked == true ? 1 :
+            FolderAllUsersStartupRadio.IsChecked == true ? 2 : 3;
                 if (App.MainWindow is null)
             {
                 await ShowSimpleDialogAsync("Build Failed", "Main window is unavailable.");

