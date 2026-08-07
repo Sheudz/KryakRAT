@@ -208,11 +208,10 @@
 								<RowDefinition Height="Auto"/>
 								<RowDefinition Height="Auto"/>
 							</Grid.RowDefinitions>
-							<TextBlock Text="Startup" FontSize="16"/>
-								<RadioButton x:Name="NoStartupRadio" Grid.Row="1" Content="No startup" IsChecked="True" Checked="StartupModeRadio_Checked"/>
-								<RadioButton x:Name="FolderStartupRadio" Grid.Row="2" Content="Startup to folder (current user)" Checked="StartupModeRadio_Checked"/>
-								<RadioButton x:Name="FolderAllUsersStartupRadio" Grid.Row="3" Content="Startup to folder (all users)" Checked="StartupModeRadio_Checked"/>
-								<RadioButton x:Name="RegistryStartupRadio" Grid.Row="4" Content="Startup to registry" Checked="StartupModeRadio_Checked"/>
+							<RadioButton x:Name="NoStartupRadio" Grid.Row="1" Content="No startup" IsChecked="True" Checked="StartupModeRadio_Checked"/>
+							<RadioButton x:Name="FolderStartupRadio" Grid.Row="2" Content="Startup to folder (current user)" Checked="StartupModeRadio_Checked"/>
+							<RadioButton x:Name="FolderAllUsersStartupRadio" Grid.Row="3" Content="Startup to folder (all users)" Checked="StartupModeRadio_Checked"/>
+							<RadioButton x:Name="RegistryStartupRadio" Grid.Row="4" Content="Startup to registry" Checked="StartupModeRadio_Checked"/>
 						</Grid>
 						<CheckBox x:Name="DropCheckBox" Content="Drop" IsChecked="False" Checked="DropCheckBox_Checked" Unchecked="DropCheckBox_Unchecked"/>
 							<StackPanel Spacing="6">

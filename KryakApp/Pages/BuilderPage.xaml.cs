@@ -1,4 +1,5 @@
 ﻿using KryakApp.Client;
+using KryakApp.Services;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using System;
@@ -545,15 +546,7 @@ namespace KryakApp.Pages
 
         private async Task ShowSimpleDialogAsync(string title, string content)
         {
-            ContentDialog dialog = new()
-            {
-                Title = title,
-                Content = content,
-                XamlRoot = XamlRoot,
-                PrimaryButtonText = "OK"
-            };
-
-            await dialog.ShowAsync();
+            await DialogHelper.ShowCopyableAsync(XamlRoot, title, content);
         }
 
         private sealed class ConnectionEntry

@@ -186,15 +186,7 @@ public sealed partial class ServerPage : Page
 
     private async Task ShowErrorAsync(string message, string title)
     {
-        ContentDialog dialog = new()
-        {
-            Title = title,
-            Content = message,
-            CloseButtonText = "OK",
-            XamlRoot = this.XamlRoot
-        };
-
-        await dialog.ShowAsync();
+        await DialogHelper.ShowCopyableAsync(this.XamlRoot, title, message);
     }
 
     private void LoadSavedServerSettings()
