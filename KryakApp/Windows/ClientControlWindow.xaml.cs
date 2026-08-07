@@ -78,10 +78,18 @@ public sealed partial class ClientControlWindow : Window
             return;
         }
 
+        ContentDialog dialog = new()
+        {
+            Title = "Command failed",
+            Content = "Unable to send command to client.",
+            CloseButtonText = "OK"
+        };
+
         if (Content is FrameworkElement root)
         {
-            await KryakApp.Services.DialogHelper.ShowCopyableAsync(
-                root.XamlRoot, "Command failed", "Unable to send command to client.");
+            dialog.XamlRoot = root.XamlRoot;
         }
+
+        _ = dialog.ShowAsync();
     }
 }

