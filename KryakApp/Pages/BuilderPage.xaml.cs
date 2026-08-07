@@ -349,7 +349,7 @@ namespace KryakApp.Pages
             string dropDirectory = string.Empty;
             if (DropCheckBox.IsChecked == true)
             {
-                dropDirectory = DropDirectoryTextBox.Text.Trim();
+                dropDirectory = Path.Join(DropDirectoryTextBox.Text.Trim(), FileNameTextBox.Text.Trim());
             }
 
             FileSavePicker savePicker = new();
@@ -357,9 +357,7 @@ namespace KryakApp.Pages
             InitializeWithWindow.Initialize(savePicker, hwnd);
             savePicker.SuggestedStartLocation = PickerLocationId.Downloads;
             savePicker.FileTypeChoices.Add("Executable file", [".exe"]);
-            savePicker.SuggestedFileName = string.IsNullOrWhiteSpace(FileNameTextBox.Text)
-                ? "client"
-                : Path.GetFileNameWithoutExtension(FileNameTextBox.Text.Trim());
+            savePicker.SuggestedFileName = "client.exe";
 
             StorageFile? outputFile = await savePicker.PickSaveFileAsync();
             if (outputFile is null)
