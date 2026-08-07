@@ -1095,9 +1095,8 @@ func captureDesktopFrame(monitorIndex, quality int) (string, error) {{
     selectObject.Call(hdcMem, hBitmap)
 
     const SRCCOPY = 0x00CC0020
-    const CAPTUREBLT = 0x40000000
     ret, _, _ := bitBlt.Call(hdcMem, 0, 0, uintptr(width), uintptr(height),
-        hdcScreen, uintptr(rect.Left), uintptr(rect.Top), SRCCOPY|CAPTUREBLT)
+        hdcScreen, uintptr(rect.Left), uintptr(rect.Top), SRCCOPY)
     if ret == 0 {{
         return """", fmt.Errorf(""BitBlt failed"")
     }}
