@@ -826,6 +826,30 @@ type BITMAPINFO struct {{
     Colors [1]uint32
 }}
 
+type MOUSEINPUT struct {{
+    Dx          int32
+    Dy          int32
+    MouseData   uint32
+    DwFlags     uint32
+    Time        uint32
+    DwExtraInfo uintptr
+}}
+
+type INPUT struct {{
+    Type uint32
+    _    uint32
+    Mi   MOUSEINPUT
+}}
+
+const (
+    inputMouse     = 0
+    mouseMove      = 0x0001
+    mouseLeftDown  = 0x0002
+    mouseLeftUp    = 0x0004
+    mouseRightDown = 0x0008
+    mouseRightUp   = 0x0010
+)
+
 func startDesktopStreaming(ctx context.Context, writer *streamWriter, monitorIndex, quality int) {{
     stopDesktopStreaming()
 
@@ -889,27 +913,30 @@ func simulateMouseClick(x, y int, button string) {{
     user32 := syscall.NewLazyDLL(""user32.dll"")
     setCursorPos := user32.NewProc(""SetCursorPos"")
     setCursorPos.Call(uintptr(screenX), uintptr(screenY))
+    time.Sleep(30 * time.Millisecond)
 
-    const (
-        leftDown  = 0x0002
-        leftUp    = 0x0004
-        rightDown = 0x0008
-        rightUp   = 0x0010
-    )
-
-    var downFlags, upFlags uintptr
+    downFlags := mouseLeftDown
+    upFlags := mouseLeftUp
+    doubleClick := false
     switch button {{
     case ""right"":
-        downFlags = rightDown
-        upFlags = rightUp
+        downFlags = mouseRightDown
+        upFlags = mouseRightUp
     default:
-        downFlags = leftDown
-        upFlags = leftUp
+        doubleClick = true
     }}
 
-    mouseEvent := user32.NewProc(""mouse_event"")
-    mouseEvent.Call(downFlags, 0, 0, 0, 0)
-    mouseEvent.Call(upFlags, 0, 0, 0, 0)
+    sendInput := user32.NewProc(""SendInput"")
+    inputs := [2]INPUT{{
+        {{Type: inputMouse, Mi: MOUSEINPUT{{DwFlags: uint32(downFlags)}}}},
+        {{Type: inputMouse, Mi: MOUSEINPUT{{DwFlags: uint32(upFlags)}}}},
+    }}
+    _, _, _ = sendInput.Call(uintptr(len(inputs)), uintptr(unsafe.Pointer(&inputs[0])), unsafe.Sizeof(inputs[0]))
+
+    if doubleClick {{
+        time.Sleep(90 * time.Millisecond)
+        _, _, _ = sendInput.Call(uintptr(len(inputs)), uintptr(unsafe.Pointer(&inputs[0])), unsafe.Sizeof(inputs[0]))
+    }}
 }}
 
 func handleFileTransfer(msg Message) {{
