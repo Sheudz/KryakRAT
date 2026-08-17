@@ -358,7 +358,7 @@ public sealed class Server
 
         QuicListenerOptions options = new()
         {
-            ListenEndPoint = new IPEndPoint(IPAddress.Loopback, port),
+            ListenEndPoint = new IPEndPoint(IPAddress.Any, port),
             ApplicationProtocols =
             [
                 new SslApplicationProtocol("kryak")

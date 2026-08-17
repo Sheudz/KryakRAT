@@ -105,7 +105,7 @@ namespace KryakApp.Pages
             };
             ControlItem.Click += (_, _) => Control(row);
 
-            menu.Items.Add(ManagerItem);
+            //menu.Items.Add(ManagerItem);
             menu.Items.Add(RemoteDesktopItem);
             menu.Items.Add(RemoteConsoleItem);
             menu.Items.Add(RunFileItem);
