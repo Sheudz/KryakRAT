@@ -1,4 +1,4 @@
-# Kryak
+# KryakRAT
 
 A remote access tool with a WinUI 3 control panel and a Go-based client.
 
