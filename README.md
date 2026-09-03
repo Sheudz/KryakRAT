@@ -5,14 +5,6 @@ A remote access tool with a WinUI 3 control panel and a Go-based client.
 ![Server](screens/server_page.jpg)
 ![Builder](screens/builder_page.jpg)
 
-## Architecture
-
-```
-KryakApp/          — WinUI 3 desktop control panel (C#)
-Client/            — Go-based remote access client
-screens/           — Application screenshots
-```
-
 ## KryakApp (Control Panel)
 
 WinUI 3 application built on .NET 8 with the following pages:
