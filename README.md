@@ -37,15 +37,6 @@ The Go client connects to the Kryak server via QUIC. It supports:
 
 Use the **Builder** page in the control panel to configure endpoints, security mode, and build options, then click **Build** to generate the Go source code.
 
-### Running the client
-
-```bash
-go mod init kryakclient
-go get github.com/quic-go/quic-go
-# Copy generated code and run:
-go run main.go
-```
-
 ## Build Options
 
 | Option | Description |
