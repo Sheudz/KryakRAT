@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "KryakRAT (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "KryakRAT (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
