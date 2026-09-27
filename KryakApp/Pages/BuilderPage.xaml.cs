@@ -67,7 +67,7 @@ namespace KryakApp.Pages
             RawInputPanel.Visibility = rawMode ? Visibility.Visible : Visibility.Collapsed;
         }
 
-        private void AddConnectionButton_Click(object sender, RoutedEventArgs e)
+        private async void AddConnectionButton_Click(object sender, RoutedEventArgs e)
         {
             string? item = null;
             bool isRaw = RawModeRadio.IsChecked == true;
@@ -77,6 +77,7 @@ namespace KryakApp.Pages
                 string raw = RawUrlTextBox.Text.Trim();
                 if (string.IsNullOrWhiteSpace(raw))
                 {
+                    await ShowSimpleDialogAsync("Warning", "Please enter a RAW URL.");
                     return;
                 }
 
@@ -89,6 +90,7 @@ namespace KryakApp.Pages
                 string port = PortTextBox.Text.Trim();
                 if (string.IsNullOrWhiteSpace(ip) || string.IsNullOrWhiteSpace(port))
                 {
+                    await ShowSimpleDialogAsync("Warning", "Please enter an IP address and port.");
                     return;
                 }
 
@@ -99,9 +101,9 @@ namespace KryakApp.Pages
 
             foreach (ConnectionEntry existing in _connections)
             {
-                if (existing.IsRaw == isRaw &&
-                    string.Equals(existing.Value, item, StringComparison.OrdinalIgnoreCase))
+                if (existing.IsRaw == isRaw && string.Equals(existing.Value, item, StringComparison.OrdinalIgnoreCase))
                 {
+                    await ShowSimpleDialogAsync("Warning", "This connection has already been added.");
                     return;
                 }
             }
@@ -341,7 +343,7 @@ namespace KryakApp.Pages
             NoStartupRadio.IsChecked == true ? 0 :
             FolderStartupRadio.IsChecked == true ? 1 :
             FolderAllUsersStartupRadio.IsChecked == true ? 2 : 3;
-                if (App.MainWindow is null)
+            if (App.MainWindow is null)
             {
                 await ShowSimpleDialogAsync("Build Failed", "Main window is unavailable.");
                 return;
