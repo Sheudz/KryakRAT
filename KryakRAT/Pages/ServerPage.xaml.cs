@@ -85,10 +85,12 @@ public sealed partial class ServerPage : Page
                 CertificatePath = certificatePath,
                 CertificatePassword = certificatePassword
             });
+            StartServerButton.IsEnabled = false;
         }
         catch (Exception ex)
         {
             SetServerOffline();
+            StartServerButton.IsEnabled = true;
             await ShowErrorAsync(ex.Message, "Server start failed");
         }
     }
@@ -105,6 +107,7 @@ public sealed partial class ServerPage : Page
         _uptimeTimer.Stop();
         _uptimeTimer.Tick -= UptimeTimer_Tick;
         SetServerOffline();
+        StartServerButton.IsEnabled = true;
     }
 
     private void GenerateCertificateButton_Click(object sender, RoutedEventArgs e)

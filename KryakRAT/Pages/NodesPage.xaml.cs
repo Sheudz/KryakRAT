@@ -13,6 +13,7 @@ namespace KryakRAT.Pages
     {
         private readonly List<Window> _openedWindows = [];
         private readonly Dictionary<UserData, List<Window>> _userWindows = [];
+        private readonly Dictionary<Window, UserData> _windowUsers = [];
 
         public NodesPage()
         {
@@ -138,7 +139,9 @@ namespace KryakRAT.Pages
         private void OpenUserWindow(UserData user, Window window)
         {
             window.Closed += ChildWindow_Closed;
+
             _openedWindows.Add(window);
+            _windowUsers[window] = user;
 
             if (!_userWindows.TryGetValue(user, out List<Window>? windows))
             {
@@ -147,26 +150,27 @@ namespace KryakRAT.Pages
             }
 
             windows.Add(window);
+
             window.Activate();
         }
 
         private void ChildWindow_Closed(object sender, WindowEventArgs args)
         {
-            if (sender is Window window)
+            if (sender is not Window window)
+                return;
+
+            window.Closed -= ChildWindow_Closed;
+
+            _openedWindows.Remove(window);
+
+            if (!_windowUsers.Remove(window, out UserData? user))
+                return;
+
+            if (_userWindows.TryGetValue(user, out List<Window>? windows))
             {
-                _openedWindows.Remove(window);
+                windows.Remove(window);
 
-                List<UserData> emptyUsers = [];
-                foreach (KeyValuePair<UserData, List<Window>> pair in _userWindows)
-                {
-                    pair.Value.Remove(window);
-                    if (pair.Value.Count == 0)
-                    {
-                        emptyUsers.Add(pair.Key);
-                    }
-                }
-
-                foreach (UserData user in emptyUsers)
+                if (windows.Count == 0)
                 {
                     _userWindows.Remove(user);
                 }
@@ -181,28 +185,29 @@ namespace KryakRAT.Pages
                 return;
             }
 
-            if (!_userWindows.TryGetValue(user, out List<Window>? windows))
-            {
+            if (!_userWindows.Remove(user, out List<Window>? windows))
                 return;
-            }
 
-            List<Window> snapshot = [.. windows];
-            foreach (Window window in snapshot)
+            foreach (Window window in windows.ToArray())
             {
+                _windowUsers.Remove(window);
+                _openedWindows.Remove(window);
+
+                window.Closed -= ChildWindow_Closed;
                 window.Close();
             }
-
-            _userWindows.Remove(user);
         }
 
         private void MainWindow_Closed(object sender, WindowEventArgs args)
         {
-            for (int i = _openedWindows.Count - 1; i >= 0; i--)
+            foreach (Window window in _openedWindows.ToArray())
             {
-                _openedWindows[i].Close();
+                window.Closed -= ChildWindow_Closed;
+                window.Close();
             }
 
             _openedWindows.Clear();
+            _windowUsers.Clear();
             _userWindows.Clear();
         }
 

