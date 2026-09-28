@@ -1,11 +1,13 @@
 using KryakRAT.Controls;
 using KryakRAT.Services;
-using Microsoft.UI.Xaml.Controls;
 using KryakRAT.Windows;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using Windows.System;
+using Windows.UI.ViewManagement.Core;
 
 namespace KryakRAT.Pages
 {
@@ -61,13 +63,15 @@ namespace KryakRAT.Pages
             {
                 return;
             }
-
-            MenuFlyout menu = CreateRowMenu(row);
-            ProtectedCursor = null;
-            menu.ShowAt(PeopleGrid, e.Position);
+            if (row.UserOS == "Windows")
+            {
+                MenuFlyout menu = CreateWindowsRowMenu(row);
+                ProtectedCursor = null;
+                menu.ShowAt(PeopleGrid, e.Position);
+            }
         }
 
-        private MenuFlyout CreateRowMenu(UserData row)
+        private MenuFlyout CreateWindowsRowMenu(UserData row)
         {
             MenuFlyout menu = new();
 
@@ -76,35 +80,35 @@ namespace KryakRAT.Pages
                 Text = "Manager",
                 Icon = new SymbolIcon(Symbol.Contact)
             };
-            ManagerItem.Click += (_, _) => Manager(row);
+            //ManagerItem.Click += (_, _) => ;
 
             MenuFlyoutItem RemoteDesktopItem = new()
             {
                 Text = "Remote desktop",
                 Icon = new SymbolIcon(Symbol.Remote)
             };
-            RemoteDesktopItem.Click += (_, _) => RemoteDesktop(row);
+            RemoteDesktopItem.Click += (_, _) => OpenUserWindow(row, new WindowsRemoteDesktopWindow(row));
 
             MenuFlyoutItem RemoteConsoleItem = new()
             {
                 Text = "Remote console",
                 Icon = new SymbolIcon(Symbol.AllApps)
             };
-            RemoteConsoleItem.Click += (_, _) => RemoteConsole(row);
+            RemoteConsoleItem.Click += (_, _) => OpenUserWindow(row, new WindowsRemoteConsoleWindow(row));
 
             MenuFlyoutItem RunFileItem = new()
             {
                 Text = "Run file",
                 Icon = new SymbolIcon(Symbol.OpenFile)
             };
-            RunFileItem.Click += (_, _) => RunFile(row);
+            RunFileItem.Click += (_, _) => OpenUserWindow(row, new WindowsRunFileWindow(row));
 
             MenuFlyoutItem ControlItem = new()
             {
                 Text = "Control",
                 Icon = new SymbolIcon(Symbol.World)
             };
-            ControlItem.Click += (_, _) => Control(row);
+            ControlItem.Click += (_, _) => OpenUserWindow(row, new WindowsClientControlWindow(row));
 
             //menu.Items.Add(ManagerItem);
             menu.Items.Add(RemoteDesktopItem);
@@ -113,27 +117,6 @@ namespace KryakRAT.Pages
             menu.Items.Add(ControlItem);
 
             return menu;
-        }
-
-        private void Manager(UserData user)
-        {
-
-        }
-        private void RemoteDesktop(UserData user)
-        {
-            OpenUserWindow(user, new RemoteDesktopWindow(user));
-        }
-        private void RemoteConsole(UserData user)
-        {
-            OpenUserWindow(user, new RemoteConsoleWindow(user));
-        }
-        private void RunFile(UserData user)
-        {
-            OpenUserWindow(user, new RunFileWindow(user));
-        }
-        private void Control(UserData user)
-        {
-            OpenUserWindow(user, new ClientControlWindow(user));
         }
 
         private void OpenUserWindow(UserData user, Window window)

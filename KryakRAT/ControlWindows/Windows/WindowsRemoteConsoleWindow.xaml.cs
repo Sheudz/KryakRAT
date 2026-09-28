@@ -11,14 +11,14 @@ using WinRT.Interop;
 
 namespace KryakRAT.Windows;
 
-public sealed partial class RemoteConsoleWindow : Window
+public sealed partial class WindowsRemoteConsoleWindow : Window
 {
     private readonly UserData _user;
     private readonly StringBuilder _pendingOutput = new();
     private readonly object _pendingLock = new();
     private readonly DispatcherQueueTimer _flushTimer;
 
-    public RemoteConsoleWindow(UserData user)
+    public WindowsRemoteConsoleWindow(UserData user)
     {
         InitializeComponent();
         _user = user;

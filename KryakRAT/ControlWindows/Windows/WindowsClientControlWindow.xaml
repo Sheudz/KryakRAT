@@ -1,5 +1,5 @@
 <Window
-    x:Class="KryakRAT.Windows.ClientControlWindow"
+    x:Class="KryakRAT.Windows.WindowsClientControlWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     Title="Client Control">

