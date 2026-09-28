@@ -140,7 +140,7 @@
 								                    Grid.Column="1"
 								                    Content="Trust current certificate"
 								                    IsEnabled="False"
-								                    Click="TrustCurrentCertificateButton_Click"/>
+								                    Click="WindowsTrustCurrentCertificateButton_Click"/>
                                             </Grid>
                                         </StackPanel>
                                     </StackPanel>
@@ -222,6 +222,134 @@
                             <TextBlock Text="Build" FontSize="28" FontWeight="SemiBold" Margin="0,0,0,6"/>
                             <StackPanel Spacing="18" Padding="0,8,0,0">
                                 <TextBlock Text="Connection" FontWeight="SemiBold"/>
+                                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="4" Padding="16">
+                                    <Grid ColumnSpacing="16" RowSpacing="8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <StackPanel Grid.Column="0" Spacing="10">
+                                            <TextBlock Text="Connection endpoints" Opacity="0.85"/>
+                                            <Border BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                                BorderThickness="1"
+                                                CornerRadius="8"
+                                                Padding="4"
+                                                MinHeight="184">
+                                                <ListView x:Name="MacOSConnectionListView"
+                                                    SelectionMode="None"
+                                                    IsItemClickEnabled="False"
+                                                    MaxHeight="276"
+                                                    ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                                    <ListView.ItemContainerStyle>
+                                                        <Style TargetType="ListViewItem">
+                                                            <Setter Property="Padding" Value="0"/>
+                                                            <Setter Property="Margin" Value="0,0,0,3"/>
+                                                            <Setter Property="MinHeight" Value="40"/>
+                                                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                                        </Style>
+                                                    </ListView.ItemContainerStyle>
+                                                    <ListView.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <Border Background="{ThemeResource LayerFillColorAltBrush}"
+									                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+									                            BorderThickness="1"
+									                            CornerRadius="6"
+									                            Padding="8,6">
+                                                                <Grid ColumnSpacing="8">
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="*"/>
+                                                                        <ColumnDefinition Width="Auto"/>
+                                                                    </Grid.ColumnDefinitions>
+
+                                                                    <TextBlock Text="{Binding DisplayText}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+
+                                                                    <Button Grid.Column="1"
+											                            Tag="{Binding}"
+											                            Click="MacOSRemoveConnectionButton_Click"
+											                            MinWidth="30"
+											                            Padding="6,0"
+											                            Background="Transparent"
+											                            BorderThickness="0"
+											                            ToolTipService.ToolTip="Remove endpoint"
+											                            VerticalAlignment="Center">
+                                                                        <FontIcon Glyph="&#xE74D;"/>
+                                                                    </Button>
+                                                                </Grid>
+                                                            </Border>
+                                                        </DataTemplate>
+                                                    </ListView.ItemTemplate>
+                                                </ListView>
+                                            </Border>
+                                            <TextBlock x:Name="MacOSConnectionCountText" Text="No endpoints added" Opacity="0.65" FontSize="12"/>
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Column="1" Spacing="10">
+                                            <TextBlock Text="Add endpoint" Opacity="0.85"/>
+
+                                            <StackPanel Orientation="Horizontal" Spacing="18">
+                                                <RadioButton x:Name="MacOSIpPortModeRadio" Content="IP + Port" IsChecked="True" Checked="MacOSConnectionModeRadio_Checked"/>
+                                                <RadioButton x:Name="MacOSRawModeRadio" Content="Raw URL" Checked="MacOSConnectionModeRadio_Checked"/>
+                                            </StackPanel>
+
+                                            <StackPanel x:Name="MacOSIpPortInputPanel" Spacing="10">
+                                                <Grid ColumnSpacing="10">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="120"/>
+                                                    </Grid.ColumnDefinitions>
+
+                                                    <TextBox x:Name="MacOSIpTextBox" PlaceholderText="127.0.0.1"/>
+                                                    <TextBox x:Name="MacOSPortTextBox" Grid.Column="1" PlaceholderText="5555"/>
+                                                </Grid>
+                                            </StackPanel>
+
+                                            <StackPanel x:Name="MacOSRawInputPanel" Spacing="10" Visibility="Collapsed">
+                                                <TextBox x:Name="MacOSRawUrlTextBox" PlaceholderText="https://example.com/config/raw"/>
+                                            </StackPanel>
+
+                                            <Button Content="Add endpoint" HorizontalAlignment="Right" MinWidth="118" Style="{StaticResource AccentButtonStyle}" Click="MacOSAddConnectionButton_Click"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                                <TextBlock Text="Security Mode" FontWeight="SemiBold"/>
+                                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="4" Padding="16">
+                                    <StackPanel Spacing="10">
+                                        <TextBlock Text="Select transport verification policy" Opacity="0.85"/>
+                                        <StackPanel Orientation="Horizontal" Spacing="22">
+                                            <RadioButton x:Name="MacOSStrictModeRadio" Content="Strict"/>
+                                            <RadioButton x:Name="MacOSPinnedModeRadio" Content="Pinned" Checked="MacOSPinnedModeRadio_Checked" Unchecked="MacOSPinnedModeRadio_Unchecked"/>
+                                            <RadioButton x:Name="MacOSInsecureModeRadio" Content="Insecure" IsChecked="True"/>
+                                        </StackPanel>
+
+                                        <StackPanel x:Name="MacOSPinnedOptionsPanel" Spacing="8" Visibility="Collapsed">
+                                            <TextBlock Text="Certificate fingerprint" Opacity="0.85"/>
+                                            <Grid ColumnSpacing="8">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+
+                                                <TextBox x:Name="MacOSFingerprintTextBox" PlaceholderText="ABCD1234..."/>
+
+                                                <Button x:Name="MacOSTrustCurrentCertificateButton"
+                                                    Grid.Column="1"
+                                                    Content="Trust current certificate"
+                                                    IsEnabled="False"
+                                                    Click="MacOSTrustCurrentCertificateButton_Click"/>
+                                            </Grid>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+
+
+                                <TextBlock Text="Client" FontWeight="SemiBold"/>
+                                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="4" Padding="16">
+                                    <StackPanel Spacing="6">
+                                        <TextBlock Text="Tag" Opacity="0.85"/>
+                                        <TextBox x:Name="MacOSClientTagTextBox" PlaceholderText="Client tag"/>
+                                    </StackPanel>
+                                </Border>
                             </StackPanel>
                         </StackPanel>
                     </StackPanel>

